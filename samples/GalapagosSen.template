@@ -1,0 +1,15 @@
+# required options to be removed
+ssaraopt.platform                   = SENTINEL-1A,SENTINEL-1B
+ssaraopt.relativeOrbit              = 128
+topsStack.boundingBox               = 1
+# end required options
+
+####################
+datasets                            = GalapagosSenDT128,GalapagosSenAT106
+dataDir                             = auto               #  /nethome/famelung/insarlab
+scratchDir                          = $SCRATCHDIR/GalaModel
+####################
+horzvert                            = True
+horzvert.startDate                  = None
+horzvert.endDate                    = None
+####################
