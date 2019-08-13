@@ -175,7 +175,7 @@ def run_save_geodmod(inps):
         project1 = inps.DataSet1
         project2 = inps.DataSet2
     
-    os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project1+'/PYSARTEST/']))
+    os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project1+'/PYSAR/']))
     datafile1 = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project1+'/PYSARTEST/']))
     print(format_args(['save_geodmod.py', '-f', datafile1, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-startDate', inps.StartDate, '-endDate', inps.EndDate, '-outdir', inps.outdir]))
     completion_status = os.system(format_args(['save_geodmod.py', '-f', datafile1, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-startDate', inps.StartDate, '-endDate', inps.EndDate, '-outdir', inps.outdir]))
@@ -183,7 +183,7 @@ def run_save_geodmod(inps):
         print('error when runing save_geodmod.py')
         exit(0)
         
-    os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project2+'/PYSARTEST/']))
+    os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project2+'/PYSAR/']))
     datafile2 = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project2+'/PYSARTEST/']))
     StartDate2,EndDate2 = find_date(datafile2,inps)
     print(format_args(['save_geodmod.py', '-f', datafile2, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-startDate', StartDate2, '-endDate', EndDate2, '-outdir', inps.outdir]))
