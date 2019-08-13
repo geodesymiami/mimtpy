@@ -1,0 +1,22 @@
+## processing template default setting
+################################# process_rsmas Parameters ################################
+process_flag                         = auto         # [True]
+every_day_flag                       = auto         # [yes]
+cleanopt                             = auto         # [0]
+dataDir                              = auto         # 
+scratchDir                           = auto         #
+
+################################# horz_vertParameters #################################
+horzvert                             = None         # frame number
+horzvert.startDate                   = None         # starting acquisition date [YYYYMMDD]
+horzvert.endDate                     = None         # ending acquisition date [YYYYMMDD]
+
+################################# topsStack Parameters ####################################                          
+geodmod.multiTrack                  = on         # [$SENTINEL_ORBITS]
+geodmod.DataSet1                    = DarbandikhanSenAT72
+geodmod.DataSet2                    = DarbandikhanSenDT79
+geodmod.SNWE                        = 34.2,35.2,45.0,46.3
+geodmod.latStep                     = 0.001
+geodmod.lonStep                     = 0.001
+#geodmod.StartDate                   = 20171117
+geodmod.EndDate                     = 20180603
