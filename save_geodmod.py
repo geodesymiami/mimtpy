@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-##################################################################
-# Program is used for extract accumulated displacement of period #
-# Author: Lv Xiaoran                                             #
-# Created: August 2019                                           #
-##################################################################
+#################################################################
+# Program is used for extract accumulated displacement of period#
+# Author: Lv Xiaoran                                            #
+# Created: August 2019                                          #
+#################################################################
 
 import os
 import argparse
