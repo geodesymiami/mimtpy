@@ -16,5 +16,5 @@ horzvert.endDate                     = None         # ending acquisition date [Y
 geodmod.SNWE                        = 34.2,35.2,45.0,46.3
 geodmod.latStep                     = 0.001
 geodmod.lonStep                     = 0.001
-#geodmod.StartDate                   = 20171115
-geodmod.EndDate                     = 20181005
+#geodmod.startDate                   = 20171115
+geodmod.endDate                     = 20181005
