@@ -23,9 +23,9 @@ from mintpy.objects import timeseries
 ######################################################################################
 EXAMPLE = """example:
   for singletrack:
-  save_geodmod.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20180603 -outdir $MODELDIR 
+  save_geodmod.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20180603 
   for multitrack:
-  save_geodmod.py -t $MODELDIR/Darbandikhan.txt -outdir $MODELDIR
+  save_geodmod.py -t $MODELDIR/Darbandikhan.txt
 """
 
 def create_parser():
@@ -34,16 +34,11 @@ def create_parser():
                                      epilog=EXAMPLE)
 
     parser.add_argument('file', nargs='?', help='ascending and descending timeseries files\n')
-    #parser.add_argument('-f','--file', dest='File', nargs=1, help='ascending and descending timeseries files\n')
     parser.add_argument('-t', '--template', dest='templateFile',
                         help="Template file with geocoding options.")
                         
-    parser.add_argument('-m', '--multitrack', dest='multiTrack',
-                        help="flag about whether use multitrack data.")
-    parser.add_argument('-ds1', '--dataset1', dest='DataSet1',
-                        help="name of dataset1.")
-    parser.add_argument('-ds2', '--dataset2', dest='DataSet2',
-                        help="name of dataset2.")                          
+    parser.add_argument('-ds', '--dataset', dest='DataSet',nargs='?',
+                        help="name of dataset.Seperating by ','. ")                        
     parser.add_argument('-b', '--bbox', dest='SNWE', type=float, nargs=4, metavar=('S', 'N', 'W', 'E'),
                         help='Bounding box of area to be geocoded.\n' +
                         'Include the uppler left corner of the first pixel' +
@@ -95,12 +90,8 @@ def read_template2inps(templatefile, inps):
     for key in key_list:
         value = template[prefix + key]
         if value:
-            if key == 'multiTrack':
-                inps_dict[key] = value
-            elif key == 'DataSet1':
-                inps_dict[key] = value
-            elif key == 'DataSet2':
-                inps_dict[key] = value
+            if key == 'DataSet':
+                inps_dict[key] = list(tuple([i for i in value.split(',')]))
             elif key == 'SNWE':
                 inps_dict[key] = list(tuple([float(i) for i in value.split(',')]))
             elif key in ['latStep', 'lonStep']:
@@ -141,8 +132,8 @@ def find_timeseries(datadir):
             datafile=file
     return datafile
 
-def des_date(datafile,date):
-    """get the descending date close to ascending date"""
+def track_date(datafile,date):
+    """get the date close to the given date"""
     completion_status=os.system(format_args(['info.py', datafile, '--date', '>', 'date_list.txt']))
     if completion_status == 1:
         print('error when runing info.py')
@@ -162,45 +153,35 @@ def des_date(datafile,date):
     return date2.strip()
 
 def find_date(datafile,inps):
-    """find the startdate and enddate of descending track"""   
+    """find the startdate and enddate of each track"""   
     if not inps.StartDate:
         startdate2=inps.StartDate
     if not inps.EndDate:
         enddate2=inps.EndDate
     if inps.StartDate:
-        startdate2=des_date(datafile,inps.StartDate)
+        startdate2=track_date(datafile,inps.StartDate)
     if inps.EndDate:
-        enddate2=des_date(datafile,inps.EndDate)
+        enddate2=track_date(datafile,inps.EndDate)
     return startdate2,enddate2
 
 def run_save_geodmod(inps):
     """run save_geodmod.py in proper directory"""
-    if not inps.DataSet1 or not inps.DataSet2:
+    if not inps.DataSet:
         tempfilename=inps.templateFile
         folders = find_folder(seprate_filename_exten(tempfilename)[1])
         print(folders)
-        project1 = folders[0]
-        project2 = folders[1]
     else:
-        project1 = inps.DataSet1
-        project2 = inps.DataSet2
-    
-    os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project1+'/PYSARTEST/']))
-    datafile1 = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project1+'/PYSARTEST/']))
-    print(format_args(['save_geodmod.py', datafile1, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.StartDate, '-e', inps.EndDate, '-outdir', inps.outdir]))
-    completion_status = os.system(format_args(['save_geodmod.py', datafile1, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.StartDate, '-e', inps.EndDate, '-outdir', inps.outdir]))
-    if completion_status == 1:
-        print('error when runing save_geodmod.py')
-        exit(0)
-        
-    os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project2+'/PYSARTEST/']))
-    datafile2 = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project2+'/PYSARTEST/']))
-    StartDate2,EndDate2 = find_date(datafile2,inps)
-    print(format_args(['save_geodmod.py', datafile2, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate2, '-e', EndDate2, '-outdir', inps.outdir]))
-    completion_status = os.system(format_args(['save_geodmod.py', datafile2, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate2, '-e', EndDate2, '-outdir', inps.outdir]))
-    if completion_status == 1:
-        print('error when runing save_geodmod.py')
-        exit(0)
+        folders = inps.DataSet
+        print(folders)
+    for project in folders:        
+        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
+        datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
+        StartDate,EndDate = find_date(datafile,inps)
+        print(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
+        completion_status = os.system(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
+        if completion_status == 1:
+            print('error when runing save_geodmod.py')
+            exit(0)
 
 def format_args(arr, dst=""):
     """ parse list array(list item or values) to string """
@@ -211,7 +192,6 @@ def format_args(arr, dst=""):
             dst = dst + " " + str(k)
     return dst.strip()
    
-#def get_path_com(path):
 def seprate_filename_exten(path):
     """ return directory(filepath), filename(shotname), extension """
     (filepath, tempfilename) = os.path.split(os.path.abspath(path))
@@ -249,7 +229,6 @@ def write_rsc_file(inps,in_file,out_file):
 
 def dem_jpeg(dem_file):
     """generate dem.jepg file based on Yunjun's code"""
-    #dem_file = inps.file[0]
     out_file = dem_file+'.jpeg'
     rsc_file = out_file+'.rsc'
     shutil.copy2(dem_file+'.rsc', rsc_file)
@@ -342,10 +321,9 @@ def processdata(inps):
 ######################################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)
-    
-    if inps.multiTrack and inps.multiTrack=='on':
-        run_save_geodmod(inps)
-    else:
+        
+    if not inps.templateFile:
+        print('single track!')
         processdata(inps)
         # rename *.rsc1 to *.rsc
         outfile = format_args(['srtm.dem' + '.rsc'])
@@ -355,6 +333,9 @@ def main(iargs=None):
         os.rename(format_args(['srtm.dem' +'.rsc1']),outfile)
         # generate dem.jpeg
         dem_jpeg('srtm.dem')
+    else:
+        print('multi track!')
+        run_save_geodmod(inps)
 
 ######################################################################################
 if __name__ == '__main__':
