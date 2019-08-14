@@ -47,9 +47,9 @@ def create_parser():
                         help='output pixel size in degree in latitude.')
     parser.add_argument('-x', '--lonstep', dest='lonStep', type=float,
                         help='output pixel size in degree in longitude.')
-    parser.add_argument('-s','--startDate',dest='StartDate',nargs='?',
+    parser.add_argument('-s','--startDate',dest='startDate',nargs='?',
                         help='date1 of timeseires to be converted.The default is the StartDate')
-    parser.add_argument('-e','--endDate',dest='EndDate',nargs='?',
+    parser.add_argument('-e','--endDate',dest='endDate',nargs='?',
                         help='date2 of timeseries to be converted.The default is the EndDate')
     
     parser.add_argument('-outdir','--outdir',dest='outdir',nargs=1,
@@ -67,10 +67,10 @@ def cmd_line_parse(iargs=None):
         # default startDate and endDate
         print('come here')
         atr = readfile.read_attribute("".join(inps.file))
-        if not inps.StartDate or inps.StartDate=='None':
-            inps.StartDate=atr['START_DATE']
-        if not inps.EndDate or inps.EndDate=='None':
-            inps.EndDate=atr['END_DATE']
+        if not inps.startDate or inps.startDate=='None':
+            inps.startDate=atr['START_DATE']
+        if not inps.endDate or inps.endDate=='None':
+            inps.endDate=atr['END_DATE']
     print(inps)
     return inps    
 
@@ -96,7 +96,7 @@ def read_template2inps(templatefile, inps):
                 inps_dict[key] = list(tuple([float(i) for i in value.split(',')]))
             elif key in ['latStep', 'lonStep']:
                 inps_dict[key] = float(value)
-            elif key in ['StartDate','EndDate']:
+            elif key in ['startDate','endDate']:
                 inps_dict[key] = value
 
     inps.laloStep = [inps.latStep, inps.lonStep]
@@ -154,14 +154,14 @@ def track_date(datafile,date):
 
 def find_date(datafile,inps):
     """find the startdate and enddate of each track"""   
-    if not inps.StartDate:
-        startdate2=inps.StartDate
-    if not inps.EndDate:
-        enddate2=inps.EndDate
-    if inps.StartDate:
-        startdate2=track_date(datafile,inps.StartDate)
-    if inps.EndDate:
-        enddate2=track_date(datafile,inps.EndDate)
+    if not inps.startDate:
+        startdate2=inps.startDate
+    if not inps.endDate:
+        enddate2=inps.endDate
+    if inps.startDate:
+        startdate2=track_date(datafile,inps.startDate)
+    if inps.endDate:
+        enddate2=track_date(datafile,inps.endDate)
     return startdate2,enddate2
 
 def run_save_geodmod(inps):
@@ -174,8 +174,8 @@ def run_save_geodmod(inps):
         folders = inps.DataSet
         print(folders)
     for project in folders:        
-        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
-        datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
+        datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
         StartDate,EndDate = find_date(datafile,inps)
         print(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
         completion_status = os.system(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
@@ -300,13 +300,13 @@ def processdata(inps):
     os.chdir("".join(inps.outdir))
     filename, extension = seprate_filename_exten("".join(atr_asc))[1:3]
     
-    cmd_args = ['geo_'+filename+extension, "".join([inps.StartDate,'_',inps.EndDate])]
+    cmd_args = ['geo_'+filename+extension, "".join([inps.startDate,'_',inps.endDate])]
     print("save_roipac.py", cmd_args)
     asct_str = format_args(cmd_args)
     os.system(format_args(['save_roipac.py', asct_str.split()]))
     #mintpy.save_roipac.main(asct_str.split())     
 
-    cmd_args = ['geo_temporalCoherence.h5', '-o', "".join(['geo_',inps.StartDate,'_',inps.EndDate,'.cor'])]    
+    cmd_args = ['geo_temporalCoherence.h5', '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.cor'])]    
     print("save_roipac.py", cmd_args)
     asct_str = format_args(cmd_args)
     os.system(format_args(['save_roipac.py', asct_str.split()]))
