@@ -174,8 +174,8 @@ def run_save_geodmod(inps):
         folders = inps.DataSet
         print(folders)
     for project in folders:        
-        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
-        datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
+        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+        datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
         StartDate,EndDate = find_date(datafile,inps)
         print(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
         completion_status = os.system(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
