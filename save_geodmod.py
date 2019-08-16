@@ -17,7 +17,7 @@ import numpy as np
 import mintpy
 import mintpy.workflow  #dynamic import for modules used by pysarApp workflow
 from mintpy.objects import sensor
-from mintpy.utils import readfile, writefile,utils as ut
+from mintpy.utils import ptime, readfile, writefile,utils as ut
 from mintpy.objects import timeseries
 
 ######################################################################################
@@ -38,7 +38,9 @@ def create_parser():
                         help="Template file with geocoding options.")
                         
     parser.add_argument('-ds', '--dataset', dest='DataSet',nargs='?',
-                        help="name of dataset.Seperating by ','. ")                        
+                        help="name of dataset.Seperating by ','. ")
+    parser.add_argument('-dt', '--datatype',dest='DataType',nargs='?',
+                        help='clarify the type of data.[velocity, ifgramStack, timeseries].Only used in template file')
     parser.add_argument('-b', '--bbox', dest='SNWE', type=float, nargs=4, metavar=('S', 'N', 'W', 'E'),
                         help='Bounding box of area to be geocoded.\n' +
                         'Include the uppler left corner of the first pixel' +
@@ -66,7 +68,11 @@ def cmd_line_parse(iargs=None):
     else:    
         # default startDate and endDate
         print('come here')
-        atr = readfile.read_attribute("".join(inps.file))
+        if not os.path.isfile("".join(inps.file)):
+            file=find_timeseries(os.getcwd())
+        else:
+            file="".join(inps.file)    
+        atr = readfile.read_attribute(file)
         if not inps.startDate or inps.startDate=='None':
             inps.startDate=atr['START_DATE']
         if not inps.endDate or inps.endDate=='None':
@@ -92,6 +98,8 @@ def read_template2inps(templatefile, inps):
         if value:
             if key == 'DataSet':
                 inps_dict[key] = list(tuple([i for i in value.split(',')]))
+            elif key == 'DataType':
+                inps_dict[key] = value
             elif key == 'SNWE':
                 inps_dict[key] = list(tuple([float(i) for i in value.split(',')]))
             elif key in ['latStep', 'lonStep']:
@@ -132,8 +140,9 @@ def find_timeseries(datadir):
             datafile=file
     return datafile
 
-def track_date(datafile,date):
+def track_date(datadir,date):
     """get the date close to the given date"""
+    datafile = find_timeseries(datadir)
     completion_status=os.system(format_args(['info.py', datafile, '--date', '>', 'date_list.txt']))
     if completion_status == 1:
         print('error when runing info.py')
@@ -152,16 +161,16 @@ def track_date(datafile,date):
                 date2=dates
     return date2.strip()
 
-def find_date(datafile,inps):
+def find_date(datadir,inps):
     """find the startdate and enddate of each track"""   
     if not inps.startDate:
         startdate2=inps.startDate
     if not inps.endDate:
         enddate2=inps.endDate
     if inps.startDate:
-        startdate2=track_date(datafile,inps.startDate)
+        startdate2=track_date(datadir,inps.startDate)
     if inps.endDate:
-        enddate2=track_date(datafile,inps.endDate)
+        enddate2=track_date(datadir,inps.endDate)
     return startdate2,enddate2
 
 def run_save_geodmod(inps):
@@ -175,8 +184,13 @@ def run_save_geodmod(inps):
         print(folders)
     for project in folders:        
         os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
-        datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
-        StartDate,EndDate = find_date(datafile,inps)
+        if inps.DataType=='timeseries':
+            datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
+        elif inps.DataType=='ifgramStack':
+            datafile = "".join([str(inps.DataType)+'.h5'])
+        else:
+            datafile = "".join([str(inps.DataType)+'.h5'])
+        StartDate,EndDate = find_date("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']),inps)
         print(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
         completion_status = os.system(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
         if completion_status == 1:
@@ -261,19 +275,29 @@ def dem_jpeg(dem_file):
     plt.savefig(out_file, transparent=True, dpi=300, pad_inches=0.0)
     plt.show()
 
+def velo_disp(inps):
+    """calculated displacement during startDate_endDate period based on linear assumption and velocity.h5"""
+    data, atr = readfile.read('geo_velocity.h5')
+    # calculate disp
+    dt1, dt2 = ptime.date_list2vector([inps.startDate, inps.endDate])[0]
+    data *= (dt2 - dt1).days / 365.25
+    # displacement to phase
+    range2phase =  -4. * np.pi / float(atr['WAVELENGTH'])
+    data *= range2phase
+    # write atr
+    atr['PROCESSOR'] = 'roipac'
+    atr['FILE_TYPE'] = '.unw'
+    atr['UNIT'] = 'radian'
+    out_file = 'geo_'+'{}_{}.unw'.format(inps.startDate, inps.endDate)
+    writefile.write(data, out_file=out_file, metadata=atr)
 
-def processdata(inps):
-    #use geocode.py and save_roipac.py to process data"
-    #  geocode timeseries**.h5 file and get the deformation field of two time periods
-    #  and geocode ifgramStack.h5 file and get the coherence of two time periods
-    #  and geocode geometryRadar.h5 file and get the dem  
-    #atr_asc = inps.file[0]
-    atr_asc = inps.file
-    
+def process_geocode(inps):
+    """process temporalCoherence.h5 and geometryRadar.h5 file"""
+    # process cor and dem dataset
     if os.path.exists("".join(inps.outdir))=='False':
         os.mkdir("".join(inps.outdir))
-   
-    # process cor and dem dataset
+        
+    # geocode
     corname='temporalCoherence.h5'
     cmd_args = [corname, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
     print("geocode.py", cmd_args)
@@ -289,6 +313,22 @@ def processdata(inps):
     print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
     mintpy.geocode.main(args_str.split())
+
+def process_saveroi(inps):    
+    #save_roipac
+    cmd_args = ['geo_temporalCoherence.h5', '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.cor'])]    
+    print("save_roipac.py", cmd_args)
+    asct_str = format_args(cmd_args)
+    os.system(format_args(['save_roipac.py', asct_str.split()]))
+    
+    cmd_args = ['geo_geometryRadar.h5', 'height', '-o', 'srtm.dem']
+    print("save_roipac.py", cmd_args)
+    asct_str = format_args(cmd_args)
+    os.system(format_args(['save_roipac.py', asct_str.split()]))
+
+def process_time(inps):
+    """geocode timeseries**.h5 file and get the deformation field of two time periods"""
+    atr_asc = inps.file
    
     #unw file
     cmd_args = [atr_asc, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
@@ -304,19 +344,67 @@ def processdata(inps):
     print("save_roipac.py", cmd_args)
     asct_str = format_args(cmd_args)
     os.system(format_args(['save_roipac.py', asct_str.split()]))
-    #mintpy.save_roipac.main(asct_str.split())     
 
-    cmd_args = ['geo_temporalCoherence.h5', '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.cor'])]    
+    process_saveroi(inps)
+
+def process_ifgS(inps):
+    """process ifgramStack.h5 file"""
+    
+    if os.path.exists("".join(inps.outdir))=='False':
+        os.mkdir("".join(inps.outdir))
+    
+    # dem file
+    demname='geometryRadar.h5'
+    if not os.path.isfile(demname):
+        demname_f='./inputs/geometryRadar.h5'
+    else:
+        demname_f='geometryRadar.h5'
+    cmd_args = [demname_f, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
+    print("geocode.py", cmd_args)
+    args_str = format_args(cmd_args)
+    mintpy.geocode.main(args_str.split())
+    
+    #ifgramStack file
+    atr_asc = ['./inputs/'+inps.file]
+    cmd_args = [atr_asc, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
+    print("geocode.py", cmd_args)
+    args_str = format_args(cmd_args)
+    mintpy.geocode.main(args_str.split())
+        
+    #save dataset of unw cor and dem
+    os.chdir("".join(inps.outdir))
+    filename, extension = seprate_filename_exten("".join(atr_asc))[1:3]
+    
+    cmd_args = ['geo_'+filename+extension, "".join(['unwrapPhase-',inps.startDate,'_',inps.endDate])]
     print("save_roipac.py", cmd_args)
     asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))
-    #mintpy.save_roipac.main(asct_str.split())
+    os.system(format_args(['save_roipac.py', asct_str.split()]))   
+
+    cmd_args = ['geo_'+filename+extension, "".join(['coherence-',inps.startDate,'_',inps.endDate])]
+    print("save_roipac.py", cmd_args)
+    asct_str = format_args(cmd_args)
+    completion_status=os.system(format_args(['save_roipac.py', asct_str.split()])) 
     
     cmd_args = ['geo_geometryRadar.h5', 'height', '-o', 'srtm.dem']
     print("save_roipac.py", cmd_args)
     asct_str = format_args(cmd_args)
     os.system(format_args(['save_roipac.py', asct_str.split()]))
-    #mintpy.save_roipac.main(asct_str.split())
+
+def process_vel(inps):
+    """process velocity.h5 file"""
+    atr_asc = inps.file
+   
+    #velocity file
+    cmd_args = [atr_asc, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
+    print("geocode.py", cmd_args)
+    args_str = format_args(cmd_args)
+    mintpy.geocode.main(args_str.split())
+    
+    os.chdir("".join(inps.outdir))
+    process_saveroi(inps)
+    print('save unw file')
+    velo_disp(inps)
+
 
 ######################################################################################
 def main(iargs=None):
@@ -324,7 +412,14 @@ def main(iargs=None):
         
     if not inps.templateFile:
         print('single track!')
-        processdata(inps)
+        if inps.file=='ifgramStack.h5':
+            process_ifgS(inps)
+        elif inps.file=='velocity.h5':
+            process_geocode(inps)
+            process_vel(inps)
+        else:
+            process_geocode(inps)
+            process_time(inps)
         # rename *.rsc1 to *.rsc
         outfile = format_args(['srtm.dem' + '.rsc'])
         write_rsc_file(inps,outfile,format_args(['srtm.dem' +'.rsc1']))
