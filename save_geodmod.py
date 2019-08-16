@@ -282,7 +282,7 @@ def processdata(inps):
     
     demname='geometryRadar.h5'
     if not os.path.isfile(demname):
-        demname_f='./INPUTS/geometryRadar.h5'
+        demname_f='./inputs/geometryRadar.h5'
     else:
         demname_f='geometryRadar.h5'
     cmd_args = [demname_f, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
