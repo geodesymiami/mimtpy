@@ -12,7 +12,7 @@ horzvert.startDate                   = None         # starting acquisition date 
 horzvert.endDate                     = None         # ending acquisition date [YYYYMMDD]
 
 ################################# topsStack Parameters ####################################                          
-#geodmod.DataSet                    = DarbandikhanSenAT72,DarbandikhanSenAT73,DarbandikhanSenDT79    #DarbandikhanSenDT80
+geodmod.DataSet                    = DarbandikhanSenAT72,DarbandikhanSenAT73,DarbandikhanSenDT79    #DarbandikhanSenDT80
 geodmod.DataType                    = velocity      # velocity/ifgramStack/timeseries
 geodmod.SNWE                        = 34.2,35.2,45.0,46.3
 geodmod.latStep                     = 0.001
