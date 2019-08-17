@@ -13,6 +13,7 @@ plt.switch_backend('agg')
 from matplotlib.colors import LightSource
 import shutil
 import numpy as np
+import re
 
 import mintpy
 import mintpy.workflow  #dynamic import for modules used by pysarApp workflow
@@ -23,9 +24,17 @@ from mintpy.objects import timeseries
 ######################################################################################
 EXAMPLE = """example:
   for singletrack:
-  save_geodmod.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20180603 
+  Note: startDate, endDate and outdir have default values, any of them can be not given:
+    startDate default value = atr['START_DATE']
+    endDate default value = atr['END_DATE']
+    outdir default value = '$MODELDIR/project/Sen**/geodmod_startDate_endDate/'
+  save_geodmod.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001  
+  save_geodmod.py ifgramStack.h5  -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
+  save_geodmod.py velocity.h5  -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
+  save_geodmod.py S1_IW23_026_0108_0113_20171117_XXXXXXXX.he5 -s 20171128 -e 20181210 
   for multitrack:
-  save_geodmod.py -t $MODELDIR/Darbandikhan.txt
+  Note: startDate, endDate and DataSet can be not given in template:
+  save_geodmod.py -t $MIMTFILES/Darbandikhan.txt
 """
 
 def create_parser():
@@ -55,7 +64,7 @@ def create_parser():
                         help='date2 of timeseries to be converted.The default is the EndDate')
     
     parser.add_argument('-outdir','--outdir',dest='outdir',nargs=1,
-                        help='output directory',default='geodmod')
+                        help='output directory')
 
     return parser
 
@@ -67,17 +76,15 @@ def cmd_line_parse(iargs=None):
         inps = read_template2inps("".join(inps.templateFile), inps)
     else:    
         # default startDate and endDate
-        print('come here')
         if not os.path.isfile("".join(inps.file)):
-            file=find_timeseries(os.getcwd())
+            file = find_timeseries(os.getcwd())
         else:
-            file="".join(inps.file)    
+            file = "".join(inps.file)    
         atr = readfile.read_attribute(file)
         if not inps.startDate or inps.startDate=='None':
-            inps.startDate=atr['START_DATE']
+            inps.startDate = atr['START_DATE']
         if not inps.endDate or inps.endDate=='None':
-            inps.endDate=atr['END_DATE']
-    print(inps)
+            inps.endDate = atr['END_DATE']
     return inps    
 
 
@@ -112,10 +119,21 @@ def read_template2inps(templatefile, inps):
         inps.laloStep = None
     return inps
 
+def set_outdir(inps,pwdDir):
+    """set output directory"""
+    if not inps.outdir or inps.outdir[0] == 'None':
+        projectTrack = pwdDir.split('/')[-2] #get projectSenAT***
+        ret = re.findall(r"^(.+)(Sen[AD]T\d+)$", projectTrack)
+        project = ret[0][0]
+        Track = ret[0][1]
+        dirname = "".join([os.getenv('MODELDIR')+'/'+project+'/'+Track+'/geodmod_'+inps.startDate+'_'+inps.endDate])
+    else:
+        dirname = inps.outdir[0]+'geodmod_'+inps.startDate+'_'+inps.endDate
+    return dirname
     
 def find_folder(tempfilename):
     """find the project folder and sort the folder in [*AT *DT]"""
-    dir=os.getenv('SCRATCHDIR')
+    dir = os.getenv('SCRATCHDIR')
     folders = ["".join([dir +'/'])]
     project_folder = []
     for folder in folders:
@@ -127,23 +145,34 @@ def find_folder(tempfilename):
  
 def find_timeseries(datadir):
     """find timeseries***.h5 file. The best results is timeseries_***_demErr.h5"""
-    datafiles=[]
+    datafiles = []
     key1 = 'timeseries'
     key2 = 'Residual'
     for file in os.listdir(datadir):
         if os.path.splitext(file)[1] =='.h5':
             if str.find(file,key1) != -1 and str.find(file,key2) == -1:
                 datafiles.append(file)
-    datafile=[]
+    datafile = []
     for file in datafiles:
         if len(file)>len(datafile):
-            datafile=file
+            datafile = file
     return datafile
 
+def find_S1_fullname(datadir):
+    """find full name for S1 datatype"""
+
+    datafiles = []
+    key1 = 'S1'
+    for file in os.listdir(datadir):
+        if os.path.splitext(file)[1] =='.he5':
+            if str.find(file,key1) != -1 :
+                 datafiles.append(file)
+    return datafiles[0]
+    
 def track_date(datadir,date):
     """get the date close to the given date"""
     datafile = find_timeseries(datadir)
-    completion_status=os.system(format_args(['info.py', datafile, '--date', '>', 'date_list.txt']))
+    completion_status = os.system(format_args(['info.py', datafile, '--date', '>', 'date_list.txt']))
     if completion_status == 1:
         print('error when runing info.py')
         exit(0)
@@ -152,51 +181,81 @@ def track_date(datadir,date):
         lines = f.readlines() 
         f.close()        
     date_part = "".join(date)[0:6]
-    date2=[]
-    sub=31
+    date2 = []
+    sub = 31
     for dates in lines:
         if str.find(dates,date_part) != -1:
             if abs(int(dates[6:8])-int(date[6:8]))<sub:
-                sub=abs(int(dates[6:8])-int(date[6:8]))
-                date2=dates
+                sub = abs(int(dates[6:8])-int(date[6:8]))
+                date2 = dates
     return date2.strip()
 
 def find_date(datadir,inps):
     """find the startdate and enddate of each track"""   
     if not inps.startDate:
-        startdate2=inps.startDate
+        startdate2 = inps.startDate
     if not inps.endDate:
-        enddate2=inps.endDate
+        enddate2 = inps.endDate
     if inps.startDate:
-        startdate2=track_date(datadir,inps.startDate)
+        startdate2 = track_date(datadir,inps.startDate)
     if inps.endDate:
-        enddate2=track_date(datadir,inps.endDate)
+        enddate2 = track_date(datadir,inps.endDate)
     return startdate2,enddate2
+
+def check_step(folders):
+    """for S1*h5 file, check whether the lat_step and lon_step are same for different projects"""
+    x_step = []
+    y_step = []
+    for project in folders:
+       os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+       # find S1*.h5 whole name
+       datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+       atr = readfile.read_attribute(datafile)
+       x_step.append(atr['X_STEP'])
+       y_step.append(atr['Y_STEP'])
+    if len(set(x_step))!= 1:
+        raise Exception("error! lon_Step between different tracks is not same!")
+    elif len(set(y_step))!= 1:
+        raise Exception("error! lat_Step between different tracks is not same!")
+    else:
+        return True
+
+def multitrack_run_save_geodmod(inps,folders):
+    """run save_geodmod for each track"""
+    for project in folders:        
+        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+        if inps.DataType == 'S1':
+            datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+        elif inps.DataType == 'timeseries':
+            datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+        elif inps.DataType == 'ifgramStack':
+            datafile = "".join([str(inps.DataType)+'.h5'])
+        elif inps.DataType == 'velocity':
+            datafile = "".join([str(inps.DataType)+'.h5'])
+        
+        print(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-outdir', inps.outdir]))
+        completion_status = os.system(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-outdir', inps.outdir]))
+        if completion_status == 1:
+            print('error when runing save_geodmod.py')
+            exit(0)
 
 def run_save_geodmod(inps):
     """run save_geodmod.py in proper directory"""
     if not inps.DataSet:
-        tempfilename=inps.templateFile
+        tempfilename = inps.templateFile
         folders = find_folder(seprate_filename_exten(tempfilename)[1])
         print(folders)
     else:
         folders = inps.DataSet
         print(folders)
-    for project in folders:        
-        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
-        if inps.DataType=='timeseries':
-            datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
-        elif inps.DataType=='ifgramStack':
-            datafile = "".join([str(inps.DataType)+'.h5'])
-        else:
-            datafile = "".join([str(inps.DataType)+'.h5'])
-        StartDate,EndDate = find_date("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']),inps)
-        print(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
-        completion_status = os.system(format_args(['save_geodmod.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', StartDate, '-e', EndDate, '-outdir', inps.outdir]))
-        if completion_status == 1:
-            print('error when runing save_geodmod.py')
-            exit(0)
-
+    # if datatype is S1,first judge whether they have same lat_step and lon_step
+    if inps.DataType == 'S1':
+        flag = check_step(folders)
+        if flag:
+            multitrack_run_save_geodmod(inps,folders)
+    else:
+        multitrack_run_save_geodmod(inps,folders)
+    
 def format_args(arr, dst=""):
     """ parse list array(list item or values) to string """
     for k in arr:
@@ -294,21 +353,21 @@ def velo_disp(inps):
 def process_geocode(inps):
     """process temporalCoherence.h5 and geometryRadar.h5 file"""
     # process cor and dem dataset
-    if os.path.exists("".join(inps.outdir))=='False':
-        os.mkdir("".join(inps.outdir))
+    if os.path.exists("".join(inps.outdir))==False:
+        os.makedirs("".join(inps.outdir))
         
     # geocode
-    corname='temporalCoherence.h5'
+    corname = 'temporalCoherence.h5'
     cmd_args = [corname, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
     print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
     mintpy.geocode.main(args_str.split())
     
-    demname='geometryRadar.h5'
+    demname = 'geometryRadar.h5'
     if not os.path.isfile(demname):
-        demname_f='./inputs/geometryRadar.h5'
+        demname_f = './inputs/geometryRadar.h5'
     else:
-        demname_f='geometryRadar.h5'
+        demname_f = 'geometryRadar.h5'
     cmd_args = [demname_f, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
     print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
@@ -349,16 +408,15 @@ def process_time(inps):
 
 def process_ifgS(inps):
     """process ifgramStack.h5 file"""
-    
-    if os.path.exists("".join(inps.outdir))=='False':
-        os.mkdir("".join(inps.outdir))
+    if os.path.exists("".join(inps.outdir))==False:
+        os.makedirs("".join(inps.outdir))
     
     # dem file
     demname='geometryRadar.h5'
     if not os.path.isfile(demname):
-        demname_f='./inputs/geometryRadar.h5'
+        demname_f = './inputs/geometryRadar.h5'
     else:
-        demname_f='geometryRadar.h5'
+        demname_f = 'geometryRadar.h5'
     cmd_args = [demname_f, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
     print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
@@ -383,7 +441,7 @@ def process_ifgS(inps):
     cmd_args = ['geo_'+filename+extension, "".join(['coherence-',inps.startDate,'_',inps.endDate])]
     print("save_roipac.py", cmd_args)
     asct_str = format_args(cmd_args)
-    completion_status=os.system(format_args(['save_roipac.py', asct_str.split()])) 
+    completion_status = os.system(format_args(['save_roipac.py', asct_str.split()])) 
     
     cmd_args = ['geo_geometryRadar.h5', 'height', '-o', 'srtm.dem']
     print("save_roipac.py", cmd_args)
@@ -405,21 +463,60 @@ def process_vel(inps):
     print('save unw file')
     velo_disp(inps)
 
+def process_S1(inps):
+    """process S1*.h5 file"""
 
+    atr_asc = inps.file
+        
+    #save dataset of unw cor and dem
+    filename, extension = seprate_filename_exten("".join(atr_asc))[1:3]
+    cmd_args = [filename+extension, "".join(['displacement-',inps.startDate,'_',inps.endDate]), '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.unw'])]
+    print("save_roipac.py", cmd_args)
+    asct_str = format_args(cmd_args)
+    os.system(format_args(['save_roipac.py', asct_str.split()]))   
+
+    cmd_args = [filename+extension, 'temporalCoherence', '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.cor'])]
+    print("save_roipac.py", cmd_args)
+    asct_str = format_args(cmd_args)
+    completion_status=os.system(format_args(['save_roipac.py', asct_str.split()])) 
+    
+    cmd_args = [filename+extension, 'height', '-o', 'srtm.dem']
+    print("save_roipac.py", cmd_args)
+    asct_str = format_args(cmd_args)
+    os.system(format_args(['save_roipac.py', asct_str.split()]))
+    
+    # mv 
+    if os.path.exists(inps.outdir)==False:
+        os.makedirs(inps.outdir)
+    else:
+        shutil.rmtree(inps.outdir)
+        os.makedirs(inps.outdir)
+    key1 = 'geo_'
+    key2 = 'srtm'
+    for file in os.listdir(os.getcwd()):
+        if str.find(file,key1) != -1 or str.find(file,key2) != -1:
+            shutil.move(file,inps.outdir) 
+    os.chdir("".join(inps.outdir))         
+    
 ######################################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)
-        
+    print(inps)    
     if not inps.templateFile:
         print('single track!')
-        if inps.file=='ifgramStack.h5':
+        inps.startDate,inps.endDate = find_date(os.getcwd(),inps)
+        inps.outdir = set_outdir(inps,os.getcwd())
+        print(inps)
+        if str.find(inps.file,'ifgramStack.h5') != -1:
             process_ifgS(inps)
-        elif inps.file=='velocity.h5':
+        elif str.find(inps.file,'velocity.h5') != -1:
             process_geocode(inps)
             process_vel(inps)
-        else:
+        elif str.find(inps.file,'timeseries') != -1:
             process_geocode(inps)
             process_time(inps)
+        else:
+            process_S1(inps)
         # rename *.rsc1 to *.rsc
         outfile = format_args(['srtm.dem' + '.rsc'])
         write_rsc_file(inps,outfile,format_args(['srtm.dem' +'.rsc1']))
