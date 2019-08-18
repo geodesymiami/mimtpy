@@ -128,7 +128,7 @@ def set_outdir(inps,pwdDir):
         Track = ret[0][1]
         dirname = "".join([os.getenv('MODELDIR')+'/'+project+'/'+Track+'/geodmod_'+inps.startDate+'_'+inps.endDate])
     else:
-        dirname = inps.outdir[0]+'geodmod_'+inps.startDate+'_'+inps.endDate
+        dirname = inps.outdir[0]+'/geodmod_'+inps.startDate+'_'+inps.endDate
     return dirname
     
 def find_folder(tempfilename):
