@@ -11,11 +11,24 @@ horzvert                             = None         # frame number
 horzvert.startDate                   = None         # starting acquisition date [YYYYMMDD]
 horzvert.endDate                     = None         # ending acquisition date [YYYYMMDD]
 
-################################# topsStack Parameters ####################################                          
-geodmod.DataSet                    = DarbandikhanSenAT72,DarbandikhanSenAT73,DarbandikhanSenDT79    #DarbandikhanSenDT80
-geodmod.DataType                    = velocity      # velocity/ifgramStack/timeseries
+################################# geodmod Parameters ####################################                          
+geodmod.modle_software              = geodmod
+geodmod.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73,DarbandikhanSenDT79    #DarbandikhanSenDT80
+geodmod.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/S1
 geodmod.SNWE                        = 34.2,35.2,45.0,46.3
 geodmod.latStep                     = 0.001
 geodmod.lonStep                     = 0.001
-#geodmod.startDate                   = 20171115
-geodmod.endDate                     = 20171129
+#geodmod.startDate                   = 20171125
+geodmod.endDate                     = 20171225
+
+################################# gbis Parameters ####################################                          
+gbis.model_software              = gbis
+gbis.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73 #,DarbandikhanSenDT79    #DarbandikhanSenDT80
+gbis.DataType                    = S1 # velocity/ifgramStack/timeseries/S1
+gbis.SNWE                        = 34.2,35.2,45.0,46.3
+gbis.latStep                     = 0.001
+gbis.lonStep                     = 0.001
+gbis.startDate                   = 20171117
+gbis.endDate                     = 20171129
+#gbis.mask_file                   = 20171225
+#gbis.ref_lalo                     = 34.2,45.3
