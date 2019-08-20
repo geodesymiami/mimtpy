@@ -21,15 +21,16 @@ from mintpy.utils import ptime, readfile, writefile,utils as ut
 ######################################################################################
 EXAMPLE = """example:
   Without template file
-  Note: startDate, endDate and outdir have default values, any of them can be not given:
+  Note: startDate, endDate,outname and outdir have default values, any of them can be not given:
     startDate default value = atr['START_DATE']
     endDate default value = atr['END_DATE']
+    outname = ['hz.h5','up.h5']
     outdir default value = '$MODELDIR/project/Sen**/horzvert/'
   generate_horver.py DarbandikhanSenAT73 DarbandikhanSenDT80 -dt velocity -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 
   generate_horver.py DarbandikhanSenAT73 DarbandikhanSenDT80 -dt timeseries -b 34.2 35.2 45.0 46.3 -y 0.001 -x  0.001 -m maskTempCoh.h5 -az 45 --outname horizontal.h5 vertical.h5
   generate_horver.py DarbandikhanSenAT73 DarbandikhanSenDT80 -dt ifgramStack -b 34.2 35.2 45.0 46.3 -y 0.001  -x 0.001 -e 20171130 --outname horizontal vertical
   With template file:
-  Note: startDate, endDate and DataSet can be not given in template:
+  Note: startDate, endDate,maskfile and outname can be not given in template:
   generate_horver.py -t $MIMTFILES/Darbandikhan.txt
 """
 
@@ -140,7 +141,7 @@ def generate_outdir_name(inps,pwdDir):
     return dirname
     
 def find_folder(tempfilename,dir):
-    """find the project folder and sort the folder in [*AT *DT]"""
+    """find the folders [SenAT**, SenDT**]"""
     folders = ["".join([dir +'/'])]
     project_folder = []
     for folder in folders:
