@@ -7,9 +7,15 @@ dataDir                              = auto         #
 scratchDir                           = auto         #
 
 ################################# horz_vertParameters #################################
-horzvert                             = None         # frame number
-horzvert.startDate                   = None         # starting acquisition date [YYYYMMDD]
-horzvert.endDate                     = None         # ending acquisition date [YYYYMMDD]
+horzvert.DataSet                     = DarbandikhanSenAT73,DarbandikhanSenDT80
+horzvert.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/S1
+horzvert.SNWE                        = 34.2,35.2,45.0,46.3
+horzvert.latStep                     = 0.001
+horzvert.lonStep                     = 0.001
+horzvert.startDate                   = 20171117         
+horzvert.endDate                     = 20171205         
+#horzvert.maskfile                    = maskTempCoh.h5         # mask file
+#horzvert.outname                     = horizontal.h5,vertical.h5        # outname for horizontal and vertical files
 
 ################################# geodmod Parameters ####################################                          
 geodmod.modle_software              = geodmod
