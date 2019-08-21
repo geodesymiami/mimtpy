@@ -25,10 +25,10 @@ EXAMPLE = """example:
     startDate default value = atr['START_DATE']
     endDate default value = atr['END_DATE']
     outdir default value = '$MODELDIR/project/Sen**/gbis_startDate_endDate/'
-  save_gbis.py timeseries_ECMWF_demErr.h5 --model-software gbis -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001  
-  save_gbis.py ifgramStack.h5 --model-software gbis -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
-  save_gbis.py velocity.h5 --model-software gbis -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
-  save_gbis.py S1_IW23_026_0108_0113_20171117_XXXXXXXX.he5 --model-software gbis -s 20171128 -e 20181210 
+  save_gbis.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001  
+  save_gbis.py ifgramStack.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
+  save_gbis.py velocity.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
+  save_gbis.py S1_IW23_026_0108_0113_20171117_XXXXXXXX.he5 -s 20171128 -e 20181210 
   for multitrack:
   Note: startDate, endDate and DataSet can be not given in template:
   save_gbis.py -t $MIMTFILES/Darbandikhan.txt
@@ -41,9 +41,7 @@ def create_parser():
 
     parser.add_argument('file', nargs='?', help='ascending or descending files\n')
     parser.add_argument('-t', '--template', dest='templateFile',
-                        help="Template file with geocoding options.")
-    parser.add_argument('--model-software', dest='model_software',
-                        help="Goephysical model's name.")                    
+                        help="Template file with geocoding options.")                   
                         
     parser.add_argument('-ds', '--dataset', dest='DataSet',nargs='?',
                         help="name of dataset.Seperating by ','. ")
@@ -106,9 +104,7 @@ def read_template2inps(templatefile, inps):
     for key in key_list:
         value = template[prefix + key]
         if value:
-            if key == 'model_software':
-                inps_dict[key] = value
-            elif key == 'DataSet':
+            if key == 'DataSet':
                 inps_dict[key] = list(tuple([i for i in value.split(',')]))
             elif key == 'DataType':
                 inps_dict[key] = value
@@ -126,6 +122,7 @@ def read_template2inps(templatefile, inps):
     inps.laloStep = [inps.latStep, inps.lonStep]
     if None in inps.laloStep:
         inps.laloStep = None
+    print(inps)
     return inps
 
 def generate_outdir_name(inps,pwdDir):
@@ -135,9 +132,9 @@ def generate_outdir_name(inps,pwdDir):
         ret = re.findall(r"^(.+)(Sen[AD]T\d+)$", projectTrack)
         project = ret[0][0]
         Track = ret[0][1]
-        dirname = "".join([os.getenv('MODELDIR')+'/'+project+'/'+Track+'/'+inps.model_software+'_'+inps.startDate+'_'+inps.endDate])
+        dirname = "".join([os.getenv('MODELDIR')+'/'+project+'/'+Track+'/gbis'+'_'+inps.startDate+'_'+inps.endDate])
     else:
-        dirname = inps.outdir[0]+'/'+inps.model_software+'_'+inps.startDate+'_'+inps.endDate
+        dirname = inps.outdir[0]+'/gbis'+'_'+inps.startDate+'_'+inps.endDate
     return dirname
     
 def find_folder(tempfilename):
@@ -215,9 +212,9 @@ def check_step(folders):
     x_step = []
     y_step = []
     for project in folders:
-       os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+       os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
        # find S1*.h5 whole name
-       datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+       datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
        atr = readfile.read_attribute(datafile)
        x_step.append(atr['X_STEP'])
        y_step.append(atr['Y_STEP'])
@@ -231,24 +228,24 @@ def check_step(folders):
 def multitrack_run_save_gbis(inps,folders):
     """run save_gbis for each track"""
     for project in folders:        
-        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
         if inps.DataType == 'S1':
-            datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+            datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
         elif inps.DataType == 'timeseries':
-            datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+            datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
         elif inps.DataType == 'ifgramStack':
             datafile = "".join([str(inps.DataType)+'.h5'])
         elif inps.DataType == 'velocity':
             datafile = "".join([str(inps.DataType)+'.h5'])                    
         
         if not inps.ref_lalo:
-            print(format_args(['save_gbis.py', datafile, '--model-software', inps.model_software, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '-outdir', inps.outdir]))
-            completion_status = os.system(format_args(['save_gbis.py', datafile, '--model-software', inps.model_software, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '-outdir', inps.outdir]))
+            print(format_args(['save_gbis_mimtpy.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '-outdir', inps.outdir]))
+            completion_status = os.system(format_args(['save_gbis_mimtpy.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '-outdir', inps.outdir]))
             if completion_status == 1:
                 raise Exception('error when runing save_gbis.py')        
         else:
-            print(format_args(['save_gbis.py', datafile, '--model-software', inps.model_software, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '--ref-lalo', inps.ref_lalo, '-outdir', inps.outdir]))
-            completion_status = os.system(format_args(['save_gbis.py', datafile, '--model-software', inps.model_software, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '--ref-lalo', inps.ref_lalo, '-outdir', inps.outdir]))
+            print(format_args(['save_gbis_mimtpy.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '--ref-lalo', inps.ref_lalo, '-outdir', inps.outdir]))
+            completion_status = os.system(format_args(['save_gbis_mimtpy.py', datafile, '-b', inps.SNWE, '-y', inps.latStep, '-x', inps.lonStep, '-s', inps.startDate, '-e', inps.endDate, '-m', inps.mask_file, '--ref-lalo', inps.ref_lalo, '-outdir', inps.outdir]))
             if completion_status == 1:
                 raise Exception('error when runing save_gbis.py')
 
