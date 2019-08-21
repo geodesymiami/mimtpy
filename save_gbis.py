@@ -25,7 +25,7 @@ EXAMPLE = """example:
     startDate default value = atr['START_DATE']
     endDate default value = atr['END_DATE']
     outdir default value = '$MODELDIR/project/Sen**/gbis_startDate_endDate/'
-  save_gbis.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001  
+  save_gbis.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -m maskTempCoh.h5
   save_gbis.py ifgramStack.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
   save_gbis.py velocity.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/Darbandikhan/SenAT73/
   save_gbis.py S1_IW23_026_0108_0113_20171117_XXXXXXXX.he5 -s 20171128 -e 20181210 
@@ -281,6 +281,13 @@ def seprate_filename_exten(path):
     (filename, extension) = os.path.splitext(tempfilename)
     return filepath, filename, extension
 
+def delete_tmpgeo(datadir, key1, key2):
+    """delete all geo_*.h5 files in $MODLEDIR/project/SenAT(DT)/gbis_startdate_enddate/"""
+    for file in os.listdir(datadir):
+        if os.path.splitext(file)[1] ==key2:
+            if str.find(file,key1) != -1:
+                os.remove(datadir+'/'+file)
+
 def velo_disp(inps):
     """calculated displacement during startDate_endDate period based on linear assumption and velocity.h5"""
     data, atr = readfile.read('geo_velocity.h5')
@@ -312,6 +319,12 @@ def process_geocode(inps):
     print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
     mintpy.geocode.main(args_str.split())
+    
+    if inps.mask_file:
+        cmd_args = [inps.mask_file, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
+        print("geocode.py", cmd_args)
+        args_str = format_args(cmd_args)
+        mintpy.geocode.main(args_str.split())
 
 def process_time(inps):
     """geocode timeseries**.h5 file and get the deformation field of two time periods"""
@@ -389,8 +402,7 @@ def process_S1(inps):
     key1 = 'geo_'
     for file in os.listdir(os.getcwd()):
         if str.find(file,key1) != -1:
-            shutil.move(file,inps.outdir) 
-    #os.chdir("".join(inps.outdir))         
+            shutil.move(file,inps.outdir)        
 
 def prep_gbis(inps):
     """prepare data that has to be written in *.mat file"""
@@ -416,7 +428,7 @@ def prep_gbis(inps):
         inps.mask = np.ones((int(inps.metadata['LENGTH']),
                              int(inps.metadata['WIDTH'])), dtype=np.bool_)
     else:
-        inps.mask = readfile.read(inps.mask_file)[0]
+        inps.mask = readfile.read('geo_'+inps.mask_file)[0]
         
     # update mask to exclude pixel with NaN value
     inps.mask *= ~np.isnan(inps.phase)
@@ -454,6 +466,10 @@ def prep_gbis(inps):
     inps.outfile = '{}_{}_{}.mat'.format(proj_name, inps.startDate, inps.endDate)
     inps.outfile = os.path.join(inps.outdir, inps.outfile)
     inps.outfile = os.path.abspath(inps.outfile)
+    
+    #delete geo_*.h5 files
+    delete_tmpgeo(inps.outdir, 'S1_', '.he5')
+    delete_tmpgeo(inps.outdir, 'geo_', '.h5')
     return
     
 def save2mat(inps):
