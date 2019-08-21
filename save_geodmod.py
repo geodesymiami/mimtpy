@@ -42,14 +42,14 @@ def create_parser():
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog=EXAMPLE)
 
-    parser.add_argument('file', nargs='?', help='ascending and descending timeseries files\n')
+    parser.add_argument('file', nargs='?', help='ascending or descending files\n')
     parser.add_argument('-t', '--template', dest='templateFile',
                         help="Template file with geocoding options.")
                         
     parser.add_argument('-ds', '--dataset', dest='DataSet',nargs='?',
                         help="name of dataset.Seperating by ','. ")
     parser.add_argument('-dt', '--datatype',dest='DataType',nargs='?',
-                        help='clarify the type of data.[velocity, ifgramStack, timeseries].Only used in template file')
+                        help='clarify the type of data.[velocity, ifgramStack, timeseries, S1*.he5].Only used in template file')
     parser.add_argument('-b', '--bbox', dest='SNWE', type=float, nargs=4, metavar=('S', 'N', 'W', 'E'),
                         help='Bounding box of area to be geocoded.\n' +
                         'Include the uppler left corner of the first pixel' +
@@ -128,7 +128,7 @@ def set_outdir(inps,pwdDir):
         Track = ret[0][1]
         dirname = "".join([os.getenv('MODELDIR')+'/'+project+'/'+Track+'/geodmod_'+inps.startDate+'_'+inps.endDate])
     else:
-        dirname = inps.outdir[0]+'/geodmod_'+inps.startDate+'_'+inps.endDate
+        dirname = inps.outdir[0]+'geodmod_'+inps.startDate+'_'+inps.endDate
     return dirname
     
 def find_folder(tempfilename):
@@ -207,9 +207,9 @@ def check_step(folders):
     x_step = []
     y_step = []
     for project in folders:
-       os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+       os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
        # find S1*.h5 whole name
-       datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+       datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
        atr = readfile.read_attribute(datafile)
        x_step.append(atr['X_STEP'])
        y_step.append(atr['Y_STEP'])
@@ -223,11 +223,11 @@ def check_step(folders):
 def multitrack_run_save_geodmod(inps,folders):
     """run save_geodmod for each track"""
     for project in folders:        
-        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+        os.chdir("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
         if inps.DataType == 'S1':
-            datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+            datafile = find_S1_fullname("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
         elif inps.DataType == 'timeseries':
-            datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSAR/']))
+            datafile = find_timeseries("".join([os.getenv('SCRATCHDIR')+'/'+project+'/PYSARTEST/']))
         elif inps.DataType == 'ifgramStack':
             datafile = "".join([str(inps.DataType)+'.h5'])
         elif inps.DataType == 'velocity':
@@ -271,6 +271,13 @@ def seprate_filename_exten(path):
     (filename, extension) = os.path.splitext(tempfilename)
     return filepath, filename, extension
 
+def delete_tmpgeo(datadir, key1, key2):
+    """delete all geo_*.h5 files in $MODLEDIR/project/SenAT(DT)/geodmod_startdate_enddate/"""
+    for file in os.listdir(datadir):
+        if os.path.splitext(file)[1] ==key2:
+            if str.find(file,key1) != -1:
+                os.remove(datadir+'/'+file)
+    
 def write_rsc_file(inps,in_file,out_file):
     """ write rsc file for Geodmod just estract several properities from rsc file"""
     # read file
@@ -405,6 +412,7 @@ def process_time(inps):
     os.system(format_args(['save_roipac.py', asct_str.split()]))
 
     process_saveroi(inps)
+    delete_tmpgeo(inps.outdir,'geo_','.h5')
 
 def process_ifgS(inps):
     """process ifgramStack.h5 file"""
@@ -447,6 +455,8 @@ def process_ifgS(inps):
     print("save_roipac.py", cmd_args)
     asct_str = format_args(cmd_args)
     os.system(format_args(['save_roipac.py', asct_str.split()]))
+    
+    delete_tmpgeo(inps.outdir,'geo_','.h5')
 
 def process_vel(inps):
     """process velocity.h5 file"""
@@ -462,6 +472,8 @@ def process_vel(inps):
     process_saveroi(inps)
     print('save unw file')
     velo_disp(inps)
+    
+    delete_tmpgeo(inps.outdir,'geo_','.h5')
 
 def process_S1(inps):
     """process S1*.h5 file"""
@@ -496,7 +508,9 @@ def process_S1(inps):
     for file in os.listdir(os.getcwd()):
         if str.find(file,key1) != -1 or str.find(file,key2) != -1:
             shutil.move(file,inps.outdir) 
-    os.chdir("".join(inps.outdir))         
+    os.chdir("".join(inps.outdir))  
+
+    delete_tmpgeo(inps.outdir,'geo_','.h5')    
     
 ######################################################################################
 def main(iargs=None):
@@ -525,6 +539,7 @@ def main(iargs=None):
         os.rename(format_args(['srtm.dem' +'.rsc1']),outfile)
         # generate dem.jpeg
         dem_jpeg('srtm.dem')
+        
     else:
         print('multi track!')
         run_save_geodmod(inps)
