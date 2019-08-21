@@ -19,20 +19,20 @@ horzvert.endDate                     = 20171205
 
 ################################# geodmod Parameters ####################################                          
 geodmod.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73,DarbandikhanSenDT79    #DarbandikhanSenDT80
-geodmod.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/S1
+geodmod.DataType                    = S1 # velocity/ifgramStack/timeseries/S1
 geodmod.SNWE                        = 34.2,35.2,45.0,46.3
 geodmod.latStep                     = 0.001
 geodmod.lonStep                     = 0.001
-#geodmod.startDate                   = 20171125
-geodmod.endDate                     = 20171225
+geodmod.startDate                   = 20171117
+geodmod.endDate                     = 20171129
 
 ################################# gbis Parameters ####################################                          
 gbis.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73 #,DarbandikhanSenDT79    #DarbandikhanSenDT80
-gbis.DataType                    = S1 # velocity/ifgramStack/timeseries/S1
+gbis.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/S1
 gbis.SNWE                        = 34.2,35.2,45.0,46.3
 gbis.latStep                     = 0.001
 gbis.lonStep                     = 0.001
-gbis.startDate                   = 20171117
-gbis.endDate                     = 20171129
-#gbis.mask_file                   = 20171225
+gbis.startDate                   = 20171129
+gbis.endDate                     = 20171205
+#gbis.mask_file                   = maskTemCoh.h5
 #gbis.ref_lalo                     = 34.2,45.3
