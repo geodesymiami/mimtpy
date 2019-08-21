@@ -18,7 +18,6 @@ horzvert.endDate                     = 20171205
 #horzvert.outname                     = horizontal.h5,vertical.h5        # outname for horizontal and vertical files
 
 ################################# geodmod Parameters ####################################                          
-geodmod.modle_software              = geodmod
 geodmod.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73,DarbandikhanSenDT79    #DarbandikhanSenDT80
 geodmod.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/S1
 geodmod.SNWE                        = 34.2,35.2,45.0,46.3
@@ -28,7 +27,6 @@ geodmod.lonStep                     = 0.001
 geodmod.endDate                     = 20171225
 
 ################################# gbis Parameters ####################################                          
-gbis.model_software              = gbis
 gbis.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73 #,DarbandikhanSenDT79    #DarbandikhanSenDT80
 gbis.DataType                    = S1 # velocity/ifgramStack/timeseries/S1
 gbis.SNWE                        = 34.2,35.2,45.0,46.3
