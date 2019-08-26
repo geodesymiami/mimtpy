@@ -14,6 +14,7 @@ from matplotlib.colors import LightSource
 import shutil
 import numpy as np
 import re
+from PIL import Image
 
 import mintpy
 import mintpy.workflow  #dynamic import for modules used by pysarApp workflow
@@ -315,20 +316,21 @@ def dem_jpeg(dem_file):
     shutil.copy2(dem_file+'.rsc', rsc_file)
     # read data
     dem = readfile.read(dem_file)[0]
-    print(dem.shape)
+    print('dem.shape:',dem.shape)
     # figure size
     ds_shape = tuple(reversed(dem.shape))
     fig_dpi = 300
     fig_size = [i / fig_dpi for i in ds_shape]
-    print(fig_size)
+    print('fig size:', fig_size)
     # color range
     disp_min = np.nanmin(dem) - 4000
     disp_max = np.nanmax(dem) + 2000
+
     # prepare shaded relief
     ls = LightSource(azdeg=315, altdeg=45)
     dem_shade = ls.shade(dem, vert_exag=0.3, cmap=plt.get_cmap('gray'), vmin=disp_min, vmax=disp_max)
     dem_shade[np.isnan(dem_shade[:, :, 0])] = np.nan
-    print(dem_shade.shape)
+    print('dem_shade.shape:', dem_shade.shape)
     # plot
     fig, ax = plt.subplots(figsize=fig_size)
     ax.imshow(dem_shade, interpolation='spline16', origin='upper')
@@ -340,6 +342,11 @@ def dem_jpeg(dem_file):
     # output
     print('save figure to file {}'.format(out_file))
     plt.savefig(out_file, transparent=True, dpi=300, pad_inches=0.0)
+    # resize to desired size  (FA 8/19, unclear why size is wrong))
+    im = Image.open(out_file)
+    im_out = im.resize(dem.shape, Image.NEAREST) 
+    im_out.save(out_file)
+
     plt.show()
 
 def velo_disp(inps):
