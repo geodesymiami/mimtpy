@@ -20,6 +20,7 @@ import mintpy.workflow  #dynamic import for modules used by pysarApp workflow
 from mintpy.objects import sensor
 from mintpy.utils import ptime, readfile, writefile,utils as ut
 from mintpy.objects import timeseries
+from minsar.objects import message_rsmas
 
 ######################################################################################
 EXAMPLE = """example:
@@ -128,7 +129,7 @@ def set_outdir(inps,pwdDir):
         Track = ret[0][1]
         dirname = "".join([os.getenv('MODELDIR')+'/'+project+'/'+Track+'/geodmod_'+inps.startDate+'_'+inps.endDate])
     else:
-        dirname = inps.outdir[0]+'geodmod_'+inps.startDate+'_'+inps.endDate
+        dirname = inps.outdir[0]+'/geodmod_'+inps.startDate+'_'+inps.endDate
     return dirname
     
 def find_folder(tempfilename):
@@ -363,34 +364,38 @@ def process_geocode(inps):
     if os.path.exists("".join(inps.outdir))==False:
         os.makedirs("".join(inps.outdir))
         
-    # geocode
-    corname = 'temporalCoherence.h5'
-    cmd_args = [corname, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
-    print("geocode.py", cmd_args)
+    # geocode coherence
+    fname = 'temporalCoherence.h5'
+    cmd_args = [fname, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
     args_str = format_args(cmd_args)
+    print("geocode.py", cmd_args)
+    message_rsmas.log(os.getcwd(),'geocode.py ' + args_str)
     mintpy.geocode.main(args_str.split())
     
-    demname = 'geometryRadar.h5'
-    if not os.path.isfile(demname):
-        demname_f = './inputs/geometryRadar.h5'
+    # geocode dem
+    fname = 'geometryRadar.h5'
+    if not os.path.isfile(fname):
+        fname = './inputs/geometryRadar.h5'
     else:
-        demname_f = 'geometryRadar.h5'
-    cmd_args = [demname_f, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
-    print("geocode.py", cmd_args)
+        fname = 'geometryRadar.h5'
+    cmd_args = [fname, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
     args_str = format_args(cmd_args)
+    print("geocode.py", cmd_args)
+    message_rsmas.log(os.getcwd(),'geocode.py ' + args_str)
     mintpy.geocode.main(args_str.split())
 
 def process_saveroi(inps):    
     #save_roipac
     cmd_args = ['geo_temporalCoherence.h5', '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.cor'])]    
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))
+    args_str = format_args(cmd_args)
+    os.system(format_args(['save_roipac.py', args_str.split()]))
     
     cmd_args = ['geo_geometryRadar.h5', 'height', '-o', 'srtm.dem']
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    os.system(format_args(['save_roipac.py', args_str.split()]))
 
 def process_time(inps):
     """geocode timeseries**.h5 file and get the deformation field of two time periods"""
@@ -398,8 +403,9 @@ def process_time(inps):
    
     #unw file
     cmd_args = [atr_asc, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
-    print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
+    print("geocode.py", cmd_args)
+    message_rsmas.log(os.getcwd(),'geocode.py ' + args_str)
     mintpy.geocode.main(args_str.split())
         
     #save dataset of unw cor and dem
@@ -407,9 +413,10 @@ def process_time(inps):
     filename, extension = seprate_filename_exten("".join(atr_asc))[1:3]
     
     cmd_args = ['geo_'+filename+extension, "".join([inps.startDate,'_',inps.endDate])]
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    os.system(format_args(['save_roipac.py', args_str.split()]))
 
     process_saveroi(inps)
     delete_tmpgeo(inps.outdir,'geo_','.h5')
@@ -426,15 +433,17 @@ def process_ifgS(inps):
     else:
         demname_f = 'geometryRadar.h5'
     cmd_args = [demname_f, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
-    print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
+    print("geocode.py", cmd_args)
+    message_rsmas.log(os.getcwd(),'geocode.py ' + args_str)
     mintpy.geocode.main(args_str.split())
     
     #ifgramStack file
     atr_asc = ['./inputs/'+inps.file]
     cmd_args = [atr_asc, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
-    print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
+    print("geocode.py", cmd_args)
+    message_rsmas.log(os.getcwd(),'geocode.py ' + args_str)
     mintpy.geocode.main(args_str.split())
         
     #save dataset of unw cor and dem
@@ -442,19 +451,22 @@ def process_ifgS(inps):
     filename, extension = seprate_filename_exten("".join(atr_asc))[1:3]
     
     cmd_args = ['geo_'+filename+extension, "".join(['unwrapPhase-',inps.startDate,'_',inps.endDate])]
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))   
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    os.system(format_args(['save_roipac.py', args_str.split()]))   
 
     cmd_args = ['geo_'+filename+extension, "".join(['coherence-',inps.startDate,'_',inps.endDate])]
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    completion_status = os.system(format_args(['save_roipac.py', asct_str.split()])) 
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    completion_status = os.system(format_args(['save_roipac.py', args_str.split()])) 
     
     cmd_args = ['geo_geometryRadar.h5', 'height', '-o', 'srtm.dem']
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    os.system(format_args(['save_roipac.py', args_str.split()]))
     
     delete_tmpgeo(inps.outdir,'geo_','.h5')
 
@@ -464,8 +476,9 @@ def process_vel(inps):
    
     #velocity file
     cmd_args = [atr_asc, '-b',inps.SNWE, '-y',inps.latStep, '-x',inps.lonStep, '--outdir',"".join(inps.outdir)]
-    print("geocode.py", cmd_args)
     args_str = format_args(cmd_args)
+    print("geocode.py", cmd_args)
+    message_rsmas.log(os.getcwd(),'geocode.py ' + args_str)
     mintpy.geocode.main(args_str.split())
     
     os.chdir("".join(inps.outdir))
@@ -483,19 +496,22 @@ def process_S1(inps):
     #save dataset of unw cor and dem
     filename, extension = seprate_filename_exten("".join(atr_asc))[1:3]
     cmd_args = [filename+extension, "".join(['displacement-',inps.startDate,'_',inps.endDate]), '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.unw'])]
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))   
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    os.system(format_args(['save_roipac.py', args_str.split()]))   
 
     cmd_args = [filename+extension, 'temporalCoherence', '-o', "".join(['geo_',inps.startDate,'_',inps.endDate,'.cor'])]
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    completion_status=os.system(format_args(['save_roipac.py', asct_str.split()])) 
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    completion_status=os.system(format_args(['save_roipac.py', args_str.split()])) 
     
     cmd_args = [filename+extension, 'height', '-o', 'srtm.dem']
+    args_str = format_args(cmd_args)
     print("save_roipac.py", cmd_args)
-    asct_str = format_args(cmd_args)
-    os.system(format_args(['save_roipac.py', asct_str.split()]))
+    message_rsmas.log(os.getcwd(),'save_roipac.py ' + args_str)
+    os.system(format_args(['save_roipac.py', args_str.split()]))
     
     # mv 
     if os.path.exists(inps.outdir)==False:
