@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-#################################################################
-# Program is part of Mimtpy                                     #
-# Author: Lv Xiaoran                                            #
-# Created: September 2019                                       #
-#################################################################
+################################################################
+# Program is part of Mimtpy                                    #
+# Author: Lv Xiaoran                                           #
+# Created: September 2019                                      #
+################################################################
 import os
 import argparse
 import string
