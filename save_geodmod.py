@@ -22,7 +22,7 @@ import mintpy.workflow  #dynamic import for modules used by pysarApp workflow
 from mintpy.objects import sensor
 from mintpy.utils import ptime, readfile, writefile,utils as ut
 from mintpy.objects import timeseries
-from mimtpy.utils import multitrack_utilities
+from MimtPy.utils import multitrack_utilities
 ######################################################################################
 EXAMPLE = """example:
   for singletrack:
