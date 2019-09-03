@@ -8,31 +8,31 @@ scratchDir                           = auto         #
 
 ################################# horz_vertParameters #################################
 horzvert.DataSet                     = DarbandikhanSenAT73,DarbandikhanSenDT80
-horzvert.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/S1
+horzvert.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/HDFEOS
 horzvert.SNWE                        = 34.2,35.2,45.0,46.3
 horzvert.latStep                     = 0.001
 horzvert.lonStep                     = 0.001
-horzvert.startDate                   = 20171117         
-horzvert.endDate                     = 20171205         
-#horzvert.maskfile                    = maskTempCoh.h5         # mask file
+horzvert.startDate                   = 20171117  # Date or None       
+horzvert.endDate                     = 20171205  # Date or None      
+#horzvert.maskfile                    = maskTempCoh.h5         # mask file or None 
 #horzvert.outname                     = horizontal.h5,vertical.h5        # outname for horizontal and vertical files
 
 ################################# geodmod Parameters ####################################                          
-geodmod.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73,DarbandikhanSenDT79    #DarbandikhanSenDT80
-geodmod.DataType                    = S1 # velocity/ifgramStack/timeseries/S1
+geodmod.DataSet                     = None #DarbandikhanSenAT73,DarbandikhanSenDT80
+geodmod.DataType                    = HDFEOS # velocity/ifgramStack/timeseries/HDFEOS
 geodmod.SNWE                        = 34.2,35.2,45.0,46.3
 geodmod.latStep                     = 0.001
 geodmod.lonStep                     = 0.001
-geodmod.startDate                   = 20171117
-geodmod.endDate                     = 20171129
+geodmod.startDate                   = None # Date or None
+geodmod.endDate                     = None # Date or None
 
 ################################# gbis Parameters ####################################                          
-gbis.DataSet                     = DarbandikhanSenAT72,DarbandikhanSenAT73 #,DarbandikhanSenDT79    #DarbandikhanSenDT80
-gbis.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/S1
+gbis.DataSet                     = None #DarbandikhanSenAT73,DarbandikhanSenDT80  #None
+gbis.DataType                    = ifgramStack # velocity/ifgramStack/timeseries/HDFEOS
 gbis.SNWE                        = 34.2,35.2,45.0,46.3
 gbis.latStep                     = 0.001
 gbis.lonStep                     = 0.001
-gbis.startDate                   = 20171129
-gbis.endDate                     = 20171205
-#gbis.mask_file                   = maskTemCoh.h5
-#gbis.ref_lalo                     = 34.2,45.3
+gbis.startDate                   = 20171129 # Date or None
+gbis.endDate                     = 20171205 # Date or None
+gbis.mask_file                   = None # Date or None
+gbis.ref_lalo                     = 34.2,45.3 # value or None
