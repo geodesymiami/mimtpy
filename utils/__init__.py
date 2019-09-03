@@ -1,4 +1,4 @@
-## Sub-module dependency graph:
+# Sub-module dependency graph:
 ## Check mintpy/__init__.py for more comprehensiave graph
 # Level 0 modules:
 # /solvers
