@@ -2,7 +2,7 @@
 #################################################################
 # Program is part of MimtPy                                     #
 # Author: Lv Xiaoran                                            #
-# Created: September   2019                                     #
+# Created: September 2019                                       #
 #################################################################
 import os
 import argparse
