@@ -1,4 +1,4 @@
-# processing template default setting
+## processing template default setting
 ################################# process_rsmas Parameters ################################
 process_flag                         = auto         # [True]
 every_day_flag                       = auto         # [yes]
@@ -12,11 +12,11 @@ horzvert.DataType                    = ifgramStack # velocity/ifgramStack/timese
 horzvert.SNWE                        = 34.2,35.2,45.0,46.3
 horzvert.latStep                     = 0.001
 horzvert.lonStep                     = 0.001
-horzvert.startDate                   = 20171117  # Date or None       
-horzvert.endDate                     = 20171205  # Date or None      
-#horzvert.maskfile                    = maskTempCoh.h5         # mask file or None 
-#horzvert.outname                     = horizontal.h5,vertical.h5        # outname for horizontal and vertical files
-
+horzvert.startDate                   = None  # Date or None       
+horzvert.endDate                     = 20171201  # Date or None 
+horzvert.azimuth                     = 45      # A value or None     
+horzvert.maskfile                    = None  # mask file or None 
+horzvert.outname                     = None #horizontal.h5,vertical.h5        # outname or None
 ################################# geodmod Parameters ####################################                          
 geodmod.DataSet                     = None #DarbandikhanSenAT73,DarbandikhanSenDT80
 geodmod.DataType                    = HDFEOS # velocity/ifgramStack/timeseries/HDFEOS
