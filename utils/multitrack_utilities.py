@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-################################################################
-# Program is part of Mimtpy                                    #
-# Author: Lv Xiaoran                                           #
-# Created: September 2019                                      #
-################################################################
+#################################################################
+# Program is part of Mimtpy                                     #
+# Author: Lv Xiaoran                                            #
+# Created: September 2019                                       #
+#################################################################
 import os
 import argparse
 import string
@@ -187,7 +187,8 @@ def delete_tmpgeo(datadir, key1, key2):
         if os.path.splitext(file)[1] ==key2:
             if str.find(file,key1) != -1:
                 os.remove(datadir+'/'+file)
-                
+
+# the following def are used for horzvert script                
 def find_intersection_part(s1, s2): 
 	m=[[0 for i in range(len(s2)+1)]  for j in range(len(s1)+1)]  
 	mmax=0   
@@ -200,3 +201,30 @@ def find_intersection_part(s1, s2):
 					mmax=m[i+1][j+1]
 					p=i+1
 	return s1[p-mmax:p],mmax   
+    
+def find_folder_horzvert(tempfilename,dir):
+    """find the project folder and sort the folder in [*AT *DT]"""
+    folders = ["".join([dir +'/'])]
+    project_folder = []
+    for folder in folders:
+        for x in os.listdir(folder):
+            if os.path.isdir(os.path.join(folder,x)) and str.find(x,tempfilename)!= -1:
+                project_folder.append(x)
+    project_folder_sort = sorted(project_folder)
+    return project_folder_sort
+    
+def find_timeseries_horzvert(datadir):
+    """find timeseries***.h5 file. The best results is timeseries_***_demErr.h5"""
+    datafiles = []
+    key1 = 'timeseries'
+    key2 = 'Residual'
+    key3 = 'msk'
+    for file in os.listdir(datadir):
+        if os.path.splitext(file)[1] =='.h5':
+            if str.find(file,key1) != -1 and str.find(file,key2) == -1 and str.find(file,key3) == -1:
+                datafiles.append(file)
+    datafile = []
+    for file in datafiles:
+        if len(file)>len(datafile):
+            datafile = file
+    return datafile
