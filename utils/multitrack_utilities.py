@@ -157,7 +157,8 @@ def read_template2inps(inps):
             elif key in ['mask_file']:
                 inps_dict[key] = value
             elif key in ['ref_lalo']:
-                inps_dict[key] = list(tuple([float(i) for i in value.split(',')]))
+                #inps_dict[key] = list(tuple([float(i) for i in value.split(',')]))
+                inps_dict[key] = list(tuple([i for i in value.split(',')]))
             elif key in ['maskfile']:
                 inps_dict[key] = value
             elif key in ['outname']:
