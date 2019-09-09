@@ -2,7 +2,7 @@
 #################################################################
 # Program is part of MimtPy                                     #
 # Author: Lv Xiaoran                                            #
-# Created: September 2019                                       #
+# Created: September   2019                                     #
 #################################################################
 import os
 import argparse
@@ -99,7 +99,7 @@ def multitrack_run_software(inpsdict,folders,inps):
                 print('error when runing save_geodmod.py')
                 exit(0)
         elif inps.ModelSoftware == 'gbis':
-            if inpsdict['ref_lalo'] =='None':
+            if inpsdict['ref_lalo'][0] =='None':
                 if inpsdict['mask_file'] =='None':
                     print('here!')
                     print(multitrack_utilities.seperate_str_byspace(['save_gbis_mimt.py', datafile, '-b', inpsdict['SNWE'], '-y', inpsdict['latStep'], '-x', inpsdict['lonStep'], '-s', inpsdict['startDate'], '-e', inpsdict['endDate'], '-outdir', inpsdict['outdir']]))
