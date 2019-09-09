@@ -2,7 +2,7 @@
 #################################################################
 # Program is used for extract accumulated displacement of period#
 # Author: Lv Xiaoran                                            #
-# Created: September 2019                                       #
+# Created: August 2019                                          #
 #################################################################
 
 import os
@@ -24,7 +24,7 @@ EXAMPLE = """example:
   Note: startDate, endDate and outdir have default values, any of them can be not given:
     startDate default value = atr['START_DATE']
     endDate default value = atr['END_DATE']
-    outdir default value = '$MODELDIR/project/Sen**/gbis_startDate_endDate/'
+    outdir default value = '$MODELDIR/project/gbis_startDate_endDate/'
   save_gbis_mimt.py timeseries_ECMWF_demErr.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -m maskTempCoh.h5
   save_gbis_mimt.py ifgramStack.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/DarbandikhanSenAT73
   save_gbis_mimt.py velocity.h5 -b 34.2 35.2 45.0 46.3 -y 0.001 -x 0.001 -s 20171117 -e 20171129 -outdir $MODELDIR/DarbandikhanSenAT73
