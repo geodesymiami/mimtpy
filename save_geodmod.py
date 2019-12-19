@@ -22,7 +22,7 @@ import mintpy.workflow  #dynamic import for modules used by pysarApp workflow
 from mintpy.objects import sensor
 from mintpy.utils import ptime, readfile, writefile,utils as ut
 from mintpy.objects import timeseries
-from MimtPy.utils import multitrack_utilities
+from mimtpy.utils import multitrack_utilities
 ######################################################################################
 EXAMPLE = """example:
   for singletrack:
@@ -75,8 +75,9 @@ def cmd_line_parse(iargs=None):
         inps.startDate = atr['START_DATE']
     if not inps.endDate or inps.endDate=='None':
         inps.endDate = atr['END_DATE']
+
     # set output dir
-    inps.outdir =  multitrack_utilities.set_outdir(inps,'geodmod')
+    #inps.outdir =  multitrack_utilities.set_outdir(inps,'geodmod')
     
     return inps
     
@@ -310,6 +311,8 @@ def main(iargs=None):
     print('single track!')
     inps.startDate,inps.endDate =  multitrack_utilities.find_start_end_date(os.getcwd(),inps)
     
+    # set output dir
+    inps.outdir =  multitrack_utilities.set_outdir(inps,'geodmod')
     print(inps)
     
     if str.find(inps.file,'ifgramStack') != -1:

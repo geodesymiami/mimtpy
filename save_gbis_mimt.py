@@ -75,7 +75,7 @@ def cmd_line_parse(iargs=None):
     if not inps.endDate or inps.endDate=='None':
         inps.endDate = atr['END_DATE']
     # set output dir
-    inps.outdir =  multitrack_utilities.set_outdir(inps,'gbis')
+    #inps.outdir =  multitrack_utilities.set_outdir(inps,'gbis')
     return inps    
 
 def process_geocode(inps):
@@ -270,6 +270,8 @@ def main(iargs=None):
 
     print('single track!')
     inps.startDate,inps.endDate =  multitrack_utilities.find_start_end_date(os.getcwd(),inps)
+    # set output dir
+    inps.outdir =  multitrack_utilities.set_outdir(inps,'gbis')
     print(inps)
     
     if str.find(inps.file,'ifgramStack') != -1:
