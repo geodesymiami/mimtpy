@@ -51,9 +51,12 @@ def check_zipfiles(inps):
             zf = zipfile.ZipFile(file,'r')
         except zipfile.BadZipFile:
             broken_list.append(file)
-    print('The broken zipfiles are:')
-    for filename in broken_list:
-        print(filename)
+    if broken_list:
+        print('The broken zipfiles are:')
+        for filename in broken_list:
+            print(filename)
+    else:
+        print('There are not broken zipfiles!')
     return broken_list
 
 
@@ -66,15 +69,47 @@ def delete_zipfiles(inps,broken_list):
         os.remove(real_path)
     return
 
+def check_size(inps):
+    """check file size equal to 0 bit and 1568 bit"""
+    inputdir = "".join(inps.inputdir)
+    os.chdir(inputdir)
+    filelist = glob.glob('*.zip')
+    bit_0_list = []
+    bit_1568_list = []
+    for file in filelist:
+        real_path = os.path.realpath(file)
+        size_byte = os.path.getsize(real_path)
+        size_bit = size_byte / 8
+        if size_bit == 0:
+            bit_0_list.append(file)
+        if size_bit == 1568:
+            bit_1568_list.append(file)
+    if bit_0_list:
+        print('0-bit file size:')
+        for file_0 in bit_0_list:
+            print(file_0)
+    else:
+        print('0-bit file size files don not exist in this directory!')
+    if bit_1568_list:
+        print('1568-bit file size:')
+        for file_1568 in bit_1568_list:
+            print(file_1568)
+    else:
+        print('1568-bit file size files don not exist in this directory!')
+    return bit_0_list,bit_1568_list       
+             
 
 ##############################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)
 
     broken_files=check_zipfiles(inps)
+    bit_0_files,bit_1568_files=check_size(inps)
 
     if inps.delete:
         delete_zipfiles(inps,broken_files)
+        delete_zipfiles(inps,bit_0_files)
+        delete_zipfiles(inps,bit_1568_files)
 
 ##########################################################################
 if __name__ == '__main__':
