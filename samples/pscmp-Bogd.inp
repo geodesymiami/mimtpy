@@ -1,0 +1,266 @@
+#===============================================================================
+# This is input file of FORTRAN program "pscmp2019" for modeling post-seismic deformation induced by
+# earthquakes in multi-layered viscoelastic-gravitational media using the Green's function approach. The
+# earthquke source is represented by an arbitrary number of rectangular dislocation planes.
+#
+# written by Rongjiang Wang
+# Helmholtz Centre Potsdam
+# GFZ German Research Centre for Geosciences
+# e-mail: wang@gfz-potsdam.de
+#
+# Last modified: Potsdam, Feb, 2019
+#
+#################################################################
+##                                                             ##
+## Green's functions should have been prepared with the        ##
+## program "psgrn2019" before the program "pscmp2019" is       ##
+## started.                                                    ##
+##                                                             ##
+## For local Cartesian coordinate system, the Aki's convention ##
+## is used, that is, x is northward, y is eastward, and z is   ##
+## downward.                                                   ##
+##                                                             ##
+## If not specified otherwise, SI Unit System is used overall! ##
+##                                                             ##
+#################################################################
+#=======================================================================================================
+# OBSERVATION ARRAY
+# =================
+# 1. selection (0/1/2) for irregular observation positions (= 0) or a 1D observation profile (= 1) or a
+#    rectangular 2D observation array (= 2): iposrec
+#
+#    IF (iposrec = 0 for irregular observation positions) THEN
+#
+# 2. number of positions: nrec
+#
+# 3. coordinates of the observations: (lat(i),lon(i)), i=1,nrec
+#
+#    ELSE IF (iposrec = 1 for regular 1D observation array) THEN
+#
+# 2. number of position samples of the profile: nrec
+#
+# 3. the start and end positions: (lat1,lon1), (lat2,lon2)
+#
+#    ELSE IF (iposrec = 2 for rectanglular 2D observation array) THEN
+#
+# 2. number of x samples, start and end values: nxrec, xrec1, xrec2
+#
+# 3. number of y samples, start and end values: nyrec, yrec1, yrec2
+#
+#    sequence of the positions in output data: lat(1),lon(1); ...; lat(nx),lon(1);
+#    lat(1),lon(2); ...; lat(nx),lon(2); ...; lat(1),lon(ny); ...; lat(nx),lon(ny).
+#===============================================================================
+#  0
+#  169
+#( 34.451268, 46.240375) ( 34.501533, 46.234726) ( 34.551789, 46.229059) ( 34.602054, 46.223398) ( 34.652318, 46.217729)
+#( 34.702579, 46.212055) ( 34.752840, 46.206362) ( 34.803101, 46.200675) ( 34.853357, 46.194981) ( 34.903618, 46.189280)
+#( 34.953878, 46.183562) ( 35.004137, 46.177848) ( 35.054387, 46.172128) ( 34.447916, 46.197031) ( 34.498179, 46.191356)
+#( 34.548443, 46.185675) ( 34.598705, 46.179987) ( 34.648958, 46.174282) ( 34.699221, 46.168581) ( 34.749480, 46.162874)
+#( 34.799738, 46.157160) ( 34.850000, 46.151429) ( 34.900250, 46.145702) ( 34.950508, 46.139968) ( 35.000766, 46.134228)
+#( 35.051023, 46.128470) ( 34.444548, 46.153702) ( 34.494810, 46.147990) ( 34.545071, 46.142283) ( 34.595332, 46.136569)
+#( 34.645592, 46.130849) ( 34.695847, 46.125111) ( 34.746104, 46.119378) ( 34.796360, 46.113638) ( 34.846618, 46.107891)
+#( 34.896875, 46.102138) ( 34.947122, 46.096367) ( 34.997378, 46.090600) ( 35.047633, 46.084827) ( 34.441174, 46.110365)
+#( 34.491425, 46.104638) ( 34.541685, 46.098905) ( 34.591944, 46.093155) ( 34.642202, 46.087408) ( 34.692456, 46.081655)
+#( 34.742712, 46.075896) ( 34.792966, 46.070119) ( 34.843220, 46.064346) ( 34.893476, 46.058567) ( 34.943730, 46.052780)
+#( 34.993975, 46.046987) ( 35.044228, 46.041180) ( 34.437775, 46.067031) ( 34.488034, 46.061279) ( 34.538283, 46.055520)
+#( 34.588540, 46.049754) ( 34.638796, 46.043982) ( 34.689051, 46.038196) ( 34.739305, 46.032408) ( 34.789558, 46.026614)
+#( 34.839807, 46.020811) ( 34.890060, 46.015003) ( 34.940313, 46.009189) ( 34.990565, 46.003366) ( 35.040816, 45.997537)
+#( 34.434361, 46.023711) ( 34.484618, 46.017931) ( 34.534874, 46.012143) ( 34.585129, 46.006349) ( 34.635375, 46.000549)
+#( 34.685631, 45.994742) ( 34.735882, 45.988927) ( 34.786133, 45.983106) ( 34.836387, 45.977279) ( 34.886630, 45.971444)
+#( 34.936880, 45.965603) ( 34.987131, 45.959755) ( 35.037380, 45.953899) ( 34.430932, 45.980389) ( 34.481187, 45.974583)
+#( 34.531441, 45.968770) ( 34.581694, 45.962950) ( 34.631947, 45.957124) ( 34.682194, 45.951291) ( 34.732444, 45.945451)
+#( 34.782693, 45.939603) ( 34.832941, 45.933749) ( 34.883192, 45.927888) ( 34.933432, 45.922020) ( 34.983680, 45.916146)
+#( 35.033928, 45.910264) ( 34.427497, 45.937071) ( 34.477740, 45.931239) ( 34.527993, 45.925400) ( 34.578244, 45.919555)
+#( 34.628495, 45.913702) ( 34.678742, 45.907843) ( 34.728990, 45.901977) ( 34.779237, 45.896103) ( 34.829484, 45.890223)
+#( 34.879730, 45.884336) ( 34.929977, 45.878443) ( 34.980223, 45.872541) ( 35.030460, 45.866633) ( 34.424037, 45.893757)
+#( 34.474287, 45.887899) ( 34.524538, 45.882034) ( 34.574778, 45.876163) ( 34.625027, 45.870285) ( 34.675276, 45.864399)
+#( 34.725521, 45.858507) ( 34.775766, 45.852608) ( 34.826011, 45.846701) ( 34.876253, 45.840788) ( 34.926498, 45.834868)
+#( 34.976742, 45.828941) ( 35.026985, 45.823001) ( 34.420561, 45.850445) ( 34.470810, 45.844562) ( 34.521058, 45.838671)
+#( 34.571306, 45.832774) ( 34.621544, 45.826870) ( 34.671792, 45.820954) ( 34.722036, 45.815038) ( 34.772279, 45.809115)
+#( 34.822521, 45.803185) ( 34.872759, 45.797248) ( 34.923002, 45.791293) ( 34.973244, 45.785342) ( 35.023486, 45.779383)
+#( 34.417070, 45.807138) ( 34.467317, 45.801231) ( 34.517564, 45.795317) ( 34.567809, 45.789386) ( 34.618054, 45.783458)
+#( 34.668294, 45.777523) ( 34.718536, 45.771581) ( 34.768777, 45.765622) ( 34.819017, 45.759666) ( 34.869260, 45.753702)
+#( 34.919500, 45.747732) ( 34.969732, 45.741754) ( 35.019971, 45.735759) ( 34.413573, 45.763829) ( 34.463818, 45.757897)
+#( 34.514054, 45.751957) ( 34.564297, 45.746011) ( 34.614540, 45.740057) ( 34.664780, 45.734086) ( 34.715020, 45.728118)
+#( 34.765259, 45.722143) ( 34.815498, 45.716161) ( 34.865735, 45.710160) ( 34.915974, 45.704164) ( 34.966212, 45.698160)
+#( 35.016440, 45.692149) ( 34.410052, 45.720535) ( 34.460295, 45.714577) ( 34.510537, 45.708601) ( 34.560770, 45.702629)
+#( 34.611011, 45.696649) ( 34.661251, 45.690663) ( 34.711488, 45.684669) ( 34.761725, 45.678657) ( 34.811962, 45.672649)
+#( 34.862195, 45.666633) ( 34.912432, 45.660610) ( 34.962668, 45.654569) ( 35.012903, 45.648531)
+#
+#  1
+#  51
+#  (0.0, -100.0), (0.0, 400.0)0
+#
+  2
+ 100     43.0  48.0
+  90     97.0  103.0
+#===============================================================================
+# OUTPUTS
+# =======
+#
+# 1. select (1/0) output for los displacement (only for snapshots, see below), x(n), y(e), and
+#    z(d)-cosines of the unit vector from ground to satellite orbit: insar, xlos, ylos, zlos
+#
+#    if this option is selected, the snapshots will include additional data: Disp_LOS = los displacement
+#    to the given satellite orbit.
+#
+# 2. select (1/0) output for Coulomb failure stress changes (only for snapshots, see below): icfs,
+#    friction, Skempton ratio, strike, dip, and rake angles [deg] describing the uniform regional master
+#    fault mechanism, the uniform regional principal stresses: sigma1, sigma2 and sigma3 [Pa] in
+#    arbitrary order (the orietation of the pre-stress field will be derived by assuming that the master
+#    fault is optimally oriented according to Coulomb failure criterion)
+#
+#    if this option is selected (icfs = 1), the snapshots will include additional data:
+#
+#    CFS_Max = increase of maximum CFS (can be oriented differently before and after the earthquake)
+#    CFS_Mas = increase of CFS for the given master fault mechanism
+#    CFS_Mas_Opt = increase of CFS on the master fault at the postseismic optimal rake direction
+#    Sigma_Mas = increase of normal stress on the master fault
+#    Rake_Mas_Opt = postseismic optimal rake on the master fault
+#    CFS_Opt = increase of CFS for the postseismic optimal mechanism (in 3D space)
+#    Sigma_Opt_1/2 = increase of normal stress on the first/second postseismic optimal faults
+#    Strike_Opt_1/2, Dip_Opt_1/2, Rake_Opt_1/2 = the first/second postseismic optimal focal mechanisms
+#
+#    Note: the first 3D optimally orieted fault is the closest to the master fault.
+#
+# 3. output directory in char format: outdir
+#
+# 4. select outputs for displacement components (1/0 = yes/no): itout(i), i=1,3
+#
+# 5. the file names in char format for the x(n), y(e), and z(d) components: toutfile(i), i=1,3
+#
+# 6. select outputs for stress components (1/0 = yes/no): itout(i), i=4,9
+#
+# 7. the file names in char format for the xx(nn), yy(ee), zz(dd), xy(ne), yz(ed), and zx(dn)
+#    components: toutfile(i), i=4,9
+#
+# 8. select outputs for vertical NS and EW tilt components, block rotation, geoid and gravity
+#    changes (1/0 = yes/no): itout(i), i=10,14
+#
+# 9. the file names in char format for the NS tilt (positive if borehole top tilts to north), EW
+#    tilt (positive if borehole top tilts to east), block rotation (clockwise positive), geoid and
+#    gravity changes: toutfile(i), i=10,14
+#
+#    Note that all above outputs are time series with the time window as same as used for the Green's
+#    functions
+#
+#10. number of scenario outputs ("snapshots": spatial distribution of all above observables at given
+#    time points): nsc
+#
+#11. the time [day], and file name (in char format) for the 1. snapshot;
+#12. the time [day], and file name (in char format) for the 2. snapshot;
+#13. ...
+#...
+#===============================================================================
+ 0    0.0  0.0  -1.00      !displacement upward positive
+ 0     0.700  0.000  330.000   90.000  180.000    0.0E+00    0.0E+00    0.0E+00
+ '/data/lxrtest/MODELOUT/psgrn/model4/'
+  0                0               0
+  'U_north.dat'    'U_east.dat'    'U_down.dat'
+  0            0            0            0             0            0
+  'S_nn.dat'   'S_ee.dat'   'S_dd.dat'   'S_ne.dat'    'S_ed.dat'   'S_dn.dat'
+  0               0               0                0              0
+  'Tilt_n.dat'    'Tilt_e.dat'    'Rotation.dat'   'geoid.dat'    'Gravity.dat'
+  3
+     0.00  'coseis.dat'
+     3650.00 'poseis-10y.dat'
+     7300.00 'poseis-20y.dat'
+#     10950.00 'poseis-30y.dat'
+#     14600.00 'poseis-40y.dat'
+#    18250.00 'poseis-50y.dat'
+#     21900.00 'poseis-60y.dat'
+#	  21170.00 'poseis-57y.dat'
+#     22524.00 'poseis-now.dat'
+#===============================================================================
+#
+# GREEN'S FUNCTION DATABASE(格林方程数据库)
+# =========================
+#
+# GREEN'S FUNCTION DATABASE
+# =========================
+# 1. selection (0/1) of earth structure model (0 = homogeneous elastic halfspace, i.e., only for
+#    co-seismic elastic Okada solutions, 1 = multi-layered viscoelastic halfspace, for which numerical
+#    co- and post-seismic Green's functions calculated with psgrn2019 are needed): iesmodel
+#
+#    IF (iesmodel = 0 for analytical Okada solutions) THEN
+#  
+# 2. observation depth [km] and the two Lame coefficients lambda and mue [Pa]
+#
+#    ELSE IF (iesmodel = 1 for numerical psgrn2019 Green's functions) THEN
+#
+# 2. directory where the Green's functions are stored: grndir
+# 3. file names (without extensions!) for the 13 Green's functions:
+#    3 displacement komponents (uz, ur, ut): green(i), i=1,3
+#    6 stress components (szz, srr, stt, szr, srt, stz): green(i), i=4,9
+#    radial and tangential components measured by a borehole tiltmeter,
+#    rigid rotation around z-axis, geoid and gravity changes (tr, tt, rot, gd, gr):
+#    green(i), i=10,14
+#
+#    Note that the extensions of the file names will be automatically considered.
+#    They are ".ep", ".ss", ".ds" and ".cl" denoting the explosion (inflation)
+#    strike-slip, the dip-slip and the compensated linear vector dipole sources,
+#    respectively.
+#
+#===============================================================================
+ 1
+ '/data/lxrtest/MODELOUT/psgrn/model4/'
+ 'uz'  'ur'  'ut'
+ 'szz' 'srr' 'stt' 'szr' 'srt' 'stz'
+ 'tr'  'tt'  'rot' 'gd'  'gr'
+#===============================================================================
+# RECTANGULAR SUBFAULTS
+# =====================
+# 1. number of subfaults, latitude [deg] and east longitude [deg] of the regional reference point as
+#    origin of the Cartesian coordinate system: ns, lat0, lon0
+#
+# 2. parameters for the 1. rectangular subfault: geographic coordinates (O_lat, O_lon) [deg] and O_depth
+#    [km] of the local reference point on the present fault plane, length (along strike) [km] and width
+#    (along down dip) [km], strike [deg], dip [deg], number of equi-size fault patches along the strike
+#    (np_st) and along the dip (np_di) (total number of fault patches = np_st x np_di), and the start
+#    time of the rupture; the following data lines describe the slip distribution on the present
+#    sub-fault:
+#
+#    pos_s[km]  pos_d[km]  slip_stk[m]  slip_ddip[m]  open[m]
+#
+#    where (pos_s,pos_d) defines the position of the center of each patch in the local coordinate system
+#    with the origin at the reference point: pos_s = distance along the length (positive in the strike
+#    direction) pos_d = distance along the width (positive in the down-dip direction)
+#    slip_stk = slip component in the strike direction
+#    slip:ddip = slip component in the down dip direction (i.e., normal is positive and thrust is
+#    negative)
+#    open = fault opening (negative for closing)
+#
+#
+# 3. ... for the 2. subfault ...
+# ...
+#                   N
+#                  /
+#                 /| strike
+#                +------------------------
+#                |\        p .            \ W
+#                :-\      i .              \ i
+#                |  \    l .                \ d
+#                :90 \  S .                  \ t
+#                |-dip\  .                    \ h
+#                :     \. | rake               \
+#                Z      -------------------------
+#                              L e n g t h
+#
+#    Note that a point inflation can be simulated by three point openning faults (each causes a third
+#    part of the volume of the point inflation) with orientation orthogonal to each other. the results
+#    obtained should be multiplied by a scaling factor 3(1-nu)/(1+nu), where nu is the Poisson ratio at
+#    the source. The scaling factor is the ratio of the seismic moment (energy) of an inflation source
+#    to that of a tensile source inducing a plate openning with the same volume change.
+#===============================================================================
+# n_faults (Slip model by Ji Chen, USGS)
+#-------------------------------------------------------------------------------
+  1  
+#-------------------------------------------------------------------------------
+# n   O_lat   O_lon    O_depth length  width strike dip   np_st np_di start_time
+# [-] [deg]   [deg]    [km]    [km]     [km] [deg]  [deg] [-]   [-]   [day]
+#     pos_s   pos_d    slp_stk slp_dip open
+#     [km]    [km]     [m]     [m]     [m]
+#-------------------------------------------------------------------------------
+1    45.3   99.1    0.0    270   20.0   103   70.0   1  1   0
+     135.0  10.0    6.78   -4.32    0
+#================================end of input===================================
