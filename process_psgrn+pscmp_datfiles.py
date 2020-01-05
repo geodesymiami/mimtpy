@@ -10,6 +10,7 @@ import sys
 import argparse
 import numpy as np
 from osgeo import gdal, osr
+import json
 ######################################################################################
 EXAMPLE = """example:
     process_psgrn+pscmp_datfiles.py $MODELOUT/pscmp/Bogd/model4/  
@@ -77,25 +78,43 @@ def read_poseis_dat(dat_file,inps,disp_n_co,disp_e_co,disp_d_co):
     disp_d_post = disp_d - disp_d_co
     return disp_n_post, disp_e_post, disp_d_post, lat_key, lon_key
 
+def write_files(dat_file,disp_data,disp_name,lat,lon,outdir):
+    """write 2D displacement data into *.json"""
+    lat_num = lat.shape[0]
+    lon_num = lon.shape[0]
+    displacement = {"ul_lon": lon[0], "ul_lat": lat[-1], "lr_lon": lon[-1], "lr_lat": lat[0], "samples": lon_num, "rows": lat_num, "disp_data": disp_data.tolist()}
+    open(outdir + dat_file + '_' + disp_name + '.json', "w").write(json.dumps(displacement))
+
+def read_files(disp_name, inps):
+    """ read 2d displacement data in to disp_data """
+    displacement = json.loads(open(inps.outdir + "/" + disp_name).read())
+    ul_lon = displacement["ul_lon"]
+    return np.array(json.loads(open(inps.outdir + "/" + disp_name).read()))
+
 def geocode_direction(dat_file,disp_n,disp_e,disp_d,lat_key,lon_key,inps):
 
     if inps.direction == 'N':
         disp_name = 'north_south'
         geocode(dat_file,disp_n,disp_name,lat_key,lon_key,inps.outdir)
+        write_files(dat_file,disp_n,disp_name,lat_key,lon_key,inps.outdir)
     if inps.direction == 'E':
         disp_name = 'east_west'
-        geocode(dat_file,disp_e,disp_name,lat_key,lon_key,inps.outdir)  
+        geocode(dat_file,disp_e,disp_name,lat_key,lon_key,inps.outdir)
+        write_files(dat_file,disp_e,disp_name,lat_key,lon_key,inps.outdir)  
     if inps.direction == 'U':
         disp_name = 'up'
         geocode(dat_file,disp_d,disp_name,lat_key,lon_key,inps.outdir)
+        write_files(dat_file,disp_d,disp_name,lat_key,lon_key,inps.outdir)
     if inps.direction == 'all':
         disp_name = 'north_south'  
-        geocode(dat_file,disp_n,disp_name,lat_key,lon_key,inps.outdir)   
+        geocode(dat_file,disp_n,disp_name,lat_key,lon_key,inps.outdir)
+        write_files(dat_file,disp_n,disp_name,lat_key,lon_key,inps.outdir)   
         disp_name = 'east_west'
-        geocode(dat_file,disp_e,disp_name,lat_key,lon_key,inps.outdir)   
+        geocode(dat_file,disp_e,disp_name,lat_key,lon_key,inps.outdir)
+        write_files(dat_file,disp_e,disp_name,lat_key,lon_key,inps.outdir)   
         disp_name = 'up'
         geocode(dat_file,disp_d,disp_name,lat_key,lon_key,inps.outdir)
-
+        write_files(dat_file,disp_d,disp_name,lat_key,lon_key,inps.outdir)
 
 def geocode(dat_file,disp_data,disp_name,lat,lon,outdir):
     """geocode step"""
