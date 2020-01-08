@@ -16,7 +16,7 @@ EXAMPLE = """example:
     process_psgrn+pscmp_datfiles.py $MODELOUT/pscmp/Bogd/model4/  
     process_psgrn+pscmp_datfiles.py $MODELOUT/pscmp/Bogd/model4/ --direction U 
     process_psgrn+pscmp_datfiles.py $MODELOUT/pscmp/Bogd/model4/ --direction U --date poseis-10y
-    process_psgrn+pscmp_datfiles.py $MODELOUT/pscmp/Bogd/model4/ --direction U --date poseis-10y_20y --outdir $MODELOUT/pscmp/Bogd/model4/ 
+    process_psgrn+pscmp_datfiles.py $MODELOUT/pscmp/Bogd/model4/ --direction U --date poseis-10y_20y --outdir $MODELOUT/pscmp/Bogd/model4/poseis-10y_20y/
 """
 
 
@@ -82,7 +82,9 @@ def write_files(dat_file,disp_data,disp_name,lat,lon,outdir):
     """write 2D displacement data into *.json"""
     lat_num = lat.shape[0]
     lon_num = lon.shape[0]
-    displacement = {"ul_lon": lon[0], "ul_lat": lat[-1], "lr_lon": lon[-1], "lr_lat": lat[0], "samples": lon_num, "rows": lat_num, "disp_data": disp_data.tolist()}
+    lon_step = (lon[-1] - lon[0]) / lon_num
+    lat_step = (lat[0] - lat[-1]) / lat_num
+    displacement = {"ul_lon": lon[0], "ul_lat": lat[-1], "lr_lon": lon[-1], "lr_lat": lat[0], "lon_step": lon_step, "lat_step": lat_step, "samples": lon_num, "rows": lat_num, "disp_data": disp_data.tolist()}
     open(outdir + dat_file + '_' + disp_name + '.json', "w").write(json.dumps(displacement))
 
 def read_files(disp_name, inps):
