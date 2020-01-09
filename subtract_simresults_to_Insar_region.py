@@ -74,8 +74,7 @@ def subtract_data(inps,disp_sim_name,incidence,azimuth,atr):
     # attribuate
     ul_lon_sim = disp_sim["ul_lon"]
     ul_lat_sim = disp_sim["ul_lat"]
-    ll_lon_sim = ul_lon_sim
-    ll_lat_sim = ul_lat_sim + disp_sim["lat_step"] * disp_sim["rows"]
+    
     lat_step_sim = disp_sim["lat_step"]
     lon_step_sim = disp_sim["lon_step"]
     # displacement data
@@ -86,14 +85,13 @@ def subtract_data(inps,disp_sim_name,incidence,azimuth,atr):
     ul_lon_h5 = float(atr['X_FIRST'])
     samples_h5 = int(atr["WIDTH"])
     rows_h5 = int(atr["LENGTH"])
-    ll_lon_h5 = ul_lon_h5
-    ll_lat_h5 = ul_lat_h5 + float(atr["Y_STEP"][1:]) * rows_h5
+    
     lat_step_h5 = float(atr["Y_STEP"][1:])
     lon_Step_h5 = float(atr["X_STEP"])
 
     #locate Insar position in Simulated field and subtract corresponding region from simulated displacement accroding InSAR results 
-    row_locate = int(np.floor((ll_lat_h5 - ll_lat_sim) / np.abs(disp_sim["lat_step"])))
-    sample_locate = int(np.floor((ll_lon_h5 - ll_lon_sim) / np.abs(disp_sim["lon_step"])))
+    row_locate = int(np.floor((ul_lat_h5 - ul_lat_sim) / disp_sim["lat_step"]))
+    sample_locate = int(np.floor((ul_lon_h5 - ul_lon_sim) / disp_sim["lon_step"]))
     
     # judge whether simulated data resolution equal to InSAR data resolution 
     if lat_step_h5 == lat_step_sim:
@@ -110,9 +108,11 @@ def subtract_data(inps,disp_sim_name,incidence,azimuth,atr):
         rows_offset = int(np.ceil(rows_h5 / times))
         samples_offset = int(np.ceil(samples_h5 / times))
         disp_sub = disp_data[row_locate:row_locate + rows_offset, sample_locate:sample_locate + samples_offset]
+        
         # resample incidence and azimuth data
         print('resample incidence')
         incidence = resample(incidence,times,rows_offset,samples_offset)
+        
         print('resample azimuth')
         azimuth = resample(azimuth,times,rows_offset,samples_offset)
         position = np.isnan(incidence)
@@ -149,9 +149,7 @@ def main(iagrs=None):
     inps = cmd_line_parse(iagrs)
     # read HDFEOS file
     incidence_or,azimuth_or,atr = read_hdfeos(inps)
-    #print(np.isnan(incidence).sum())
-    #incidence_2 = {"data":incidence.tolist()}
-    #open("".join(inps.outdir) + '/' + 'incidence', "w").write(json.dumps(incidence_2))    
+        
     # find displacement with *eu.json,*ns.json,*up.json files
     path_list = os.listdir("".join(inps.input_json))
     json_file = []
