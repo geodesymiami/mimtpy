@@ -11,6 +11,7 @@ import re
 import subprocess
 import argparse
 import numpy as np
+import json
 from mintpy.objects import timeseries, geometry
 from mintpy.utils import readfile, writefile, ptime, utils as ut
 
@@ -42,7 +43,7 @@ EXAMPLE = """example:
   tropo_pyaps3.py -d date_list.txt     --hour 12 -m ECMWF
   
   # download reanalysys dataset based on safe_list file
-  tropo_pyaps3.py --download_only --SAFE_list SAFE_files.txt --hour 12 -m ERA5
+  tropo_pyaps3.py --download_only --SAFE_list SAFE_files.txt -m ERA5
 """
 
 REFERENCE = """reference:
@@ -570,34 +571,67 @@ def correct_timeseries(timeseries_file, trop_file, out_file):
 def define_date(string):
     filename = string.split(str.encode('.'))[0].split(str.encode('/'))[-1]
     date = filename.split(str.encode('_'))[5][0:8]
-    time = filename.split(str.encode('_'))[5][9:15]
-    time_second = int(time[0:2]) * 3600 + int(time[2:4]) * 6 + int(time[4:6])
+    time1 = filename.split(str.encode('_'))[5][9:15]
+    time2 = filename.split(str.encode('_'))[6][9:15]
+    time1_second = int(time1[0:2]) * 3600 + int(time1[2:4]) * 60 + int(time1[4:6])
+    time2_second = int(time2[0:2]) * 3600 + int(time2[2:4]) * 60 + int(time2[4:6])
+    CENTER_LINE_UTC = (time1_second + time2_second)/2
     #date_time = [date time]
     return date
+
+def define_second(string):
+    filename = string.split(str.encode('.'))[0].split(str.encode('/'))[-1]
+    time1 = filename.split(str.encode('_'))[5][9:15]
+    time2 = filename.split(str.encode('_'))[6][9:15]
+    time1_second = int(time1[0:2]) * 3600 + int(time1[2:4]) * 60 + int(time1[4:6])
+    time2_second = int(time2[0:2]) * 3600 + int(time2[2:4]) * 60 + int(time2[4:6])
+    CENTER_LINE_UTC = (time1_second + time2_second)/2
+    return CENTER_LINE_UTC
+
+def seconds_UTC(seconds):
+    if isinstance(seconds, str):
+        secondsOut = dates
+    elif isinstance(seconds, list):
+        secondsOut = []
+        for second in seconds:
+            secondsOut.append(second)
+    else:
+        # print 'Un-recognized date input!'
+        return None
+    return secondsOut
 
 def safe_list2date_list(inps):
     
     if os.path.isfile(inps.safe_list[0]):
         print('read date list from text file: {}'.format(inps.safe_list[0]))
         date_list = ptime.yyyymmdd(np.loadtxt(inps.safe_list[0],dtype=bytes,converters={0:define_date}).astype(str).tolist())
+        second_list = seconds_UTC(np.loadtxt(inps.safe_list[0],dtype=bytes,converters={0:define_second}).astype(str).tolist())
           
-    return date_list
+    return date_list, second_list
+
+def date_second_list2grib_file(date_list,second_list,inps):
+    grib_files = []
+    
+    for safe in zip (date_list,second_list):
+        
+        dates = safe[0]
+        date = []
+        date.append(dates)
+        
+        hour = closest_weather_model_hour(float(safe[1]), inps.trop_model)
+        
+        grib_file = "".join(date_list2grib_file(date,hour,model=inps.trop_model,grib_dir = inps.grib_dir))
+         
+        grib_files.append(grib_file)
+    
+    return grib_files 
 
 def check_inputs_download_only(inps):
     
     parser = create_parser()
 
-    # hour
-    if not inps.hour:
-        if 'CENTER_LINE_UTC' in atr.keys():
-            inps.hour = closest_weather_model_hour(atr['CENTER_LINE_UTC'], inps.trop_model)
-        else:
-            parser.print_usage()
-            raise Exception('no input for hour')
-    print('time of cloest available product: {}:00 UTC'.format(inps.hour))
-
-    # date list
-    date_list = safe_list2date_list(inps)
+    # date list and second list
+    date_list,second_list = safe_list2date_list(inps)
     
     # Grib data directory
     inps.grib_dir = os.path.join(inps.weather_dir, inps.trop_model)
@@ -606,10 +640,12 @@ def check_inputs_download_only(inps):
         print('making directory: '+inps.grib_dir)
 
     # Date list to grib file list
-    inps.grib_file_list = date_list2grib_file(date_list,
-                                              hour=inps.hour,
-                                              model=inps.trop_model,
-                                              grib_dir=inps.grib_dir)
+    #inps.grib_file_list = date_list2grib_file(date_list,
+    #                                          hour=inps.hour,
+    #                                          model=inps.trop_model,
+    #                                          grib_dir=inps.grib_dir)
+    
+    inps.grib_file_list = date_second_list2grib_file(date_list,second_list,inps)
     return inps
 
 ###############################################################
