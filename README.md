@@ -12,6 +12,11 @@ save_for_modelling.py uses template file to generate data used by Geodmod/GBIS o
 # Access to mintpy data products
 Browse through all directories using: https://129.114.104.223/data/HDF5EOS 
 
+Get them via rsync:
+```
+rsync -avuz -e ssh centos@129.114.104.223:/data/HDF5EOS/TaalSenDT32 $SCRATCHDIR
+```
+
 Get them via wget using:
 ```
 wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" --no-check-certificate https://129.114.104.223/data/HDF5EOS
