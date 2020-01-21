@@ -14,7 +14,8 @@ Browse through all directories using: https://129.114.104.223/data/HDF5EOS
 
 Get them via rsync:
 ```
-rsync -avuz -e ssh centos@129.114.104.223:/data/HDF5EOS/TaalSenDT32 $SCRATCHDIR
+rsync -avuz centos@129.114.104.223:/data/HDF5EOS/* $SCRATCHDIR
+rsync -avuz centos@129.114.104.223:/data/HDF5EOS/TaalSenDT32 $SCRATCHDIR
 ```
 
 Get them via wget using:
