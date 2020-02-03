@@ -11,10 +11,9 @@ import argparse
 import subprocess
 ######################################################################################
 EXAMPLE = """example:
-    run_psgrn_pscmp.py --psgrn_file $MIMTFILES/psgrn+pscmp/psgrn/psgrn08-model1.inp -module 0 
-    run_psgrn_pscmp.py --psgrn_file $MIMTFILES/psgrn+pscmp/psgrn/psgrn08-model1.inp -module 0 -outdir $MODELOUT/psgrn/model1
-    run_psgrn_pscmp.py --pscmp_file $MIMTFILES/psgrn+pscmp/pscmp/pscmp08-model1.inp -module 1 -outdir $MODELOUT/pscmp/
-    run_psgrn_pscmp.py --psgrn_file $MIMTFILES/psgrn+pscmp/psgrn/psgrn08-model1.inp --pscmp_file $MIMTFILES/psgrn+pscmp/pscmp/pscmp08_model1.inp -module 2 
+    run_psgrn_pscmp.py --psgrn_file $MIMTFILES/psgrn+pscmp/psgrn/psgrn08-model1.inp -module 0 --psgrn_dir $MODELOUT/psgrn/model3
+    run_psgrn_pscmp.py --pscmp_file $MIMTFILES/psgrn+pscmp/pscmp/pscmp08-model1.inp -module 1 --psgrn_dir $MODELOUT/psgrn/model3/ --pscmp_dir $MODELOUT/pscmp/Bogd/model3
+    run_psgrn_pscmp.py --psgrn_file $MIMTFILES/psgrn+pscmp/psgrn/psgrn08-model1.inp --pscmp_file $MIMTFILES/psgrn+pscmp/pscmp/pscmp08_model1.inp -module 2 --psgrn_dir $MODELOUT/psgrn/model3 --pscmp_dir $MODELOUT/pscmp/Bogd/model3
 """
 # first please complie psgrn/pscmp fortran code
 # gfortran psgrn2019-code/*f -o psgrn2019
@@ -30,8 +29,11 @@ def create_parser():
     
     parser.add_argument('-module','--module',dest='module',type = int, help='choose module for run. 0: psgrn;' + 
                                                                 '1: pscmp; 2: psgrn+pscmp. \n')
-    parser.add_argument('-outdir','--outdir',dest='outdir',nargs='?',default=os.getenv('MODELOUT'),
-                        help='output directory')
+    parser.add_argument('--psgrn_dir', dest='psgrn_dir',nargs=1,help='green function dir. \n')
+
+    parser.add_argument('--pscmp_dir', dest='pscmp_dir',nargs=1,help='displacmemnt files dir. \n')
+    #parser.add_argument('-outdir','--outdir',dest='outdir',nargs='?',default=os.getenv('MODELOUT'),
+    #                    help='output directory')
 
     return parser
 
@@ -62,24 +64,28 @@ def change_text(text_file, text_before, text_after, diff_lines):
 
 def set_output_dir(inps):
     """set output dir in *.inp template file"""
+    psgrn_dir = "".join(inps.psgrn_dir)
+    pscmp_dir = "".join(inps.pscmp_dir)
     if inps.module == 0:
         text_before = " 'uz'  'ur'  'ut'\n"
-        text_after = " '" + inps.outdir + "/'\n"
+        text_after = " '" + psgrn_dir + "/'\n"
         change_text(inps.psgrn_file, text_before, text_after, 1)
         
     if inps.module == 1:
         text_before1 = " 'uz'  'ur'  'ut'\n"
         text_before2 = "  'U_north.dat'    'U_east.dat'    'U_down.dat'\n"
-        text_after = " '" + inps.outdir + "/'\n"      
-        change_text(inps.pscmp_file, text_before1, text_after, 1)
-        change_text(inps.pscmp_file, text_before2, text_after, 2)
+        text_after1 = " '" + psgrn_dir + "/'\n"
+        text_after2 = " '" + pscmp_dir + "/'\n"      
+        change_text(inps.pscmp_file, text_before1, text_after1, 1)
+        change_text(inps.pscmp_file, text_before2, text_after2, 2)
     if inps.module == 2:
         text_before1 = " 'uz'  'ur'  'ut'\n"
         text_before2 = "  'U_north.dat'    'U_east.dat'    'U_down.dat'\n"
-        text_after = " '" + inps.outdir + "/'\n"
-        change_text(inps.psgrn_file, text_before1, text_after, 1)        
-        change_text(inps.pscmp_file, text_before1, text_after, 1)
-        change_text(inps.pscmp_file, text_before2, text_after, 2)
+        text_after1 = " '" + psgrn_dir + "/'\n"
+        text_after2 = " '" + pscmp_dir + "/'\n"
+        change_text(inps.psgrn_file, text_before1, text_after1, 1)        
+        change_text(inps.pscmp_file, text_before1, text_after1, 1)
+        change_text(inps.pscmp_file, text_before2, text_after2, 2)
 
 def run_module(programpath, parameterfile):
     """ programpath, prameterfile """
@@ -104,13 +110,17 @@ def run_module(programpath, parameterfile):
 ######################################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)
-    output_dir = inps.outdir
-    
+    psgrn_dir = "".join(inps.psgrn_dir)
+    pscmp_dir = "".join(inps.pscmp_dir)
     #whether outdir exists
-    isExists = os.path.exists(output_dir)
+    isExists = os.path.exists(psgrn_dir)
     if not isExists:
-        os.makedirs(output_dir)
+        os.makedirs(psgrn_dir)
 
+    isExists = os.path.exists(pscmp_dir)
+    if not isExists:
+        os.makedirs(pscmp_dir)
+    
     # change output_dir in template file as the given output_dir
     set_output_dir(inps)
 
