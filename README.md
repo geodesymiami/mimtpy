@@ -14,8 +14,7 @@ Browse through all directories using: https://129.114.104.223/data/HDF5EOS
 
 Get them via wget using:
 ```
-wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" --no-check-certificate https://129.114.104.223/data/HDF5EOS
-wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" --no-check-certificate https://129.114.104.223/data/HDF5EOS/KashgarSenAT129
+wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" --no-check-certificate https://129.114.104.223/data/HDF5EOS/KashgarSenAT129/mintpy
 ```
 
 If you have access to jetstream and added your public key in the .ssh directory, use rsync (which uses ssh):
