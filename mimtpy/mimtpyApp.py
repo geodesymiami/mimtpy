@@ -134,93 +134,47 @@ def horzvert(inpsdict):
             os.makedirs(outdir)
         print('\nthe output dir is %s .\n' % outdir)
         
+        # go to output dir
+        os.chdir(outdir)
+
         # get the input ascending and descending dir+name 
         file_asc_data = asc_dir + '/' + file_type + '/' + file_asc + '.h5'
         file_des_data = des_dir + '/' + file_type + '/' + file_des + '.h5'
     
-        # judge whether we should change the reference point
+        # reference point
         refpoi_lalo = inpsdict['mimtpy.horzvert.referencepoint']
         if refpoi_lalo != 'None':
-            refpoi_lalo = list(tuple(float(i) for i in refpoi_lalo.split(',')))
-            refpoi_lat = refpoi_lalo[0]
-            refpoi_lon = refpoi_lalo[1]
+            refpoi_lalo = list(tuple(i for i in refpoi_lalo.split(',')))
 
-            print('\nchanging ascending and descending data reference point')
-            # change ascending data refpoi
-            completion_status = os.system(mu.seperate_str_byspace(['reference_point.py', file_asc_data, '-l', refpoi_lat, '-L', refpoi_lon]))
-            if completion_status == 1:
-                raise Exception('error when runing reference_point.py for %s' % file_asc_data)
-            asc_data, asc_atr = readfile.read(file_asc_data)
-            asc_atr['REF_LAT'] = refpoi_lat
-            asc_atr['REF_LON'] = refpoi_lon
-            writefile.write(asc_data, out_file=file_asc_data, metadata=asc_atr)
-            # change descending data refpoi 
-            completion_status = os.system(mu.seperate_str_byspace(['reference_point.py', file_des_data, '-l', refpoi_lat, '-L', refpoi_lon]))
-            if completion_status == 1:
-                raise Exception('error when runing reference_point.py for %s' % file_des_data)
-            des_data, des_atr = readfile.read(file_des_data)
-            des_atr['REF_LAT'] = refpoi_lat
-            des_atr['REF_LON'] = refpoi_lon
-            writefile.write(des_data, out_file=file_des_data, metadata=des_atr)
-
-        print('\ngo to the output dir {}'.format(outdir))
-        os.chdir(outdir)
-        
         # spatial range in lat/lon format
         SNWE = inpsdict['mimtpy.horzvert.SNWE']
         SNWE = list(tuple(float(i) for i in SNWE.split(',')))
-
-        # subset ascending and descending to the same spatial region
-        print('\nsubset ascending data')
-        sub_file_asc = 'subset_' + file_asc + '.h5'
-        file_asc_data = asc_dir + '/' + file_type + '/' + file_asc + '.h5'
-        print(mu.seperate_str_byspace(['subset.py', file_asc_data, '-l', SNWE[0:2], '-L', SNWE[2:4], '-o', sub_file_asc]))
-        completion_status = os.system(mu.seperate_str_byspace(['subset.py', file_asc_data, '-l', SNWE[0:2], '-L', SNWE[2:4], '-o', sub_file_asc]))
-        if completion_status == 1:
-            raise Exception('error when subset ascending data!')
- 
-        print('\nsubset descending data')
-        sub_file_des = 'subset_' + file_des + '.h5'
-        file_des_data = des_dir + '/' + file_type + '/' + file_des + '.h5'
-        print(mu.seperate_str_byspace(['subset.py', file_des_data, '-l', SNWE[0:2], '-L', SNWE[2:4], '-o', sub_file_des]))
-        completion_status = os.system(mu.seperate_str_byspace(['subset.py', file_des_data, '-l', SNWE[0:2], '-L', SNWE[2:4], '-o', sub_file_des]))
-        if completion_status == 1:
-            raise Exception('error when subset descending data!')
-
+        
         # resolve ascending and descending to horz and vert data.
         azimuth = inpsdict['mimtpy.horzvert.azimuth']
         outname = inpsdict['mimtpy.horzvert.outname']
-        if outname == 'None':
-            horz_name = file_type + '_horz.h5'
-            vert_name = file_type + '_vert.h5'
-        else:
+        if outname != 'None':
             outname = list(tuple(i for i in outname.split(',')))
-            horz_name = file_type + outname[0]
-            vert_name = file_type + outname[1]
-        if azimuth == 'None':    
-            print(mu.seperate_str_byspace(['asc_desc2horz_vert.py', sub_file_asc, sub_file_des, '-o', horz_name, vert_name]))
-            completion_status = os.system(mu.seperate_str_byspace(['asc_desc2horz_vert.py', sub_file_asc, sub_file_des, '-o', horz_name, vert_name]))
-            if completion_status == 1:
-                raise Exception('error when running asc_desc2horz_vert.py!')
-        else:
-            print(os.system(mu.seperate_str_byspace(['asc_desc2horz_vert.py', sub_file_asc, sub_file_des, '--az', azimuth, '-o', horz_name, vert_name])))
-            completion_status = os.system(mu.seperate_str_byspace(['asc_desc2horz_vert.py', sub_file_asc, sub_file_des, '--az', azimuth, '-o', horz_name, vert_name]))
-            if completion_status == 1:
-                raise Exception('error when running asc_desc2horz_vert.py!')
-            
-        # run H5UNW_to_geotiff.py
-        # horizontal data
-        scp_args2 = [horz_name, '--outdir', outdir, '--output', horz_name.split('.')[0] + '.tiff'] 
+        
+        if refpoi_lalo != 'None' and azimuth != 'None' and outname != 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--reference_point', refpoi_lalo, '--azimuth', azimuth, '--outname', outname, '--outdir', outdir] 
+        elif refpoi_lalo != 'None' and azimuth != 'None' and outname == 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--reference_point', refpoi_lalo, '--azimuth', azimuth, '--outdir', outdir] 
+        elif refpoi_lalo != 'None' and azimuth == 'None' and outname != 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--reference_point', refpoi_lalo, '--outname', outname, '--outdir', outdir] 
+        elif refpoi_lalo != 'None' and azimuth == 'None' and outname == 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--reference_point', refpoi_lalo, '--outdir', outdir] 
+        elif refpoi_lalo == 'None' and azimuth != 'None' and outname != 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--azimuth', azimuth, '--outname', outname, '--outdir', outdir] 
+        elif refpoi_lalo == 'None' and azimuth != 'None' and outname == 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--azimuth', azimuth, '--outdir', outdir]
+        elif refpoi_lalo == 'None' and azimuth == 'None' and outname != 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--outname', outname, '--outdir', outdir]
+        elif refpoi_lalo == 'None' and azimuth == 'None' and outname == 'None':
+            scp_args2 = [file_asc_data, file_des_data, '--bbox', SNWE, '--outdir', outdir]
         scp_args2 = mu.seperate_str_byspace(scp_args2)
-        print('\nH5UNW_to_geotiff.py',scp_args2)
-        mimtpy.H5UNW_to_geotiff.main(scp_args2.split())
-
-        # vertical data
-        scp_args2 = [vert_name, '--outdir', outdir, '--output', vert_name.split('.')[0] + '.tiff']
-        scp_args2 = mu.seperate_str_byspace(scp_args2)
-        print('\nH5UNW_to_geotiff.py',scp_args2)
-        mimtpy.H5UNW_to_geotiff.main(scp_args2.split())
-
+        print('\ngenerate_horzvert.py',scp_args2)
+        mimtpy.generate_horzvert.main(scp_args2.split())
     else:
         print('\nSkip horzvert step')
  
