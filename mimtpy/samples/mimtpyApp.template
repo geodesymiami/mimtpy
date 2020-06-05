@@ -1,0 +1,38 @@
+## processing template default setting
+################################# velocity or cumulative Parameters ####################################                          
+mimtpy.velcumu                              = no # yes or no
+mimtpy.velcumu.DataSet                      = BalochistanSenDT151,BalochistanSenDT49
+mimtpy.velcumu.type                         = velocity # velocity or displacement
+mimtpy.velcumu.SNWE                         = None  # None or [34.2,35.2,45.0,46.3]
+mimtpy.velcumu.startDate                    = None # None or 20141012
+mimtpy.velcumu.endDate                      = None # None or 20141012
+mimtpy.velcumu.mask                         = y #y or n
+################################# horz_vertParameters #################################
+mimtpy.horzvert                             = no # yes or no
+mimtpy.horzvert.DataSet                     = BalochistanSenAT115,BalochistanSenDT151
+mimtpy.horzvert.dataname                    = velocity_20141025_20200420,velocity_20141016_20200423
+mimtpy.horzvert.SNWE                        = 26.0,27.5,65.0,66.0 # None or [34.2,35.2,45.0,46.3]
+mimtpy.horzvert.referencepoint              = 27.5,64.8 # None or 27.5,64.8
+mimtpy.horzvert.azimuth                     = 15 # value or None      
+mimtpy.horzvert.outname                     = None # None or [horizontal.h5,vertical.h5]        # outname or None
+mimtpy.horzvert.outdir                      = $SCRATCHDIR/BalochistanSen/
+################################ concatenation Parameters ####################################
+mimtpy.concatenation                        = yes # yes or no
+mimtpy.concatenation.DataSet                = BalochistanSenDT151,BalochistanSenDT49
+mimtpy.concatenation.dataname               = velocity_20141016_20200423,velocity_20141021_20200428
+mimtpy.concatenation.rewrite                = y # y or n
+mimtpy.concatenation.mosaic                 = y # y or n
+mimtpy.concatenation.outname                = BalochistanSenDT # None or name
+mimtpy.concatenation.outdir                 = $SCRATCHDIR/BalochistanSenDT/
+################################ plot Parameters #############################################
+mimtpy.plot                                 = no # yes or no
+mimtpy.plot.type                            = velocity #[velocity/displacement]
+mimtpy.plot.fault                           = /data/lxrtest/Balochistan/shp/multifault.shp # must given
+mimtpy.plot.refpoi                          = /data/lxrtest/Balochistan/shp/refpoi_AT.shp # must given
+mimtpy.plot.vlim                            = -0.02,0.02 # None or [-2,2]
+################################# geodmod Parameters ####################################                          
+mimtpy.geodmod                             = no # yes or no
+mimtpy.geodmod.DataSet                     = BalochistanSenDT151,BalochistanSenAT115
+mimtpy.geodmod.SNWE                        = 26.0,27.5,65.0,66.0 # None or [26.0,27.5,65.0,66.0]
+mimtpy.geodmod.startDate                   = None # Date or None
+mimtpy.geodmod.endDate                     = None # Date or None
