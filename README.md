@@ -87,3 +87,11 @@ If you have access to jetstream and added your public key in the .ssh directory,
 rsync -avuz centos@129.114.104.223:/data/HDF5EOS/* $SCRATCHDIR
 rsync -avuz centos@129.114.104.223:/data/HDF5EOS/TaalSenDT32 $SCRATCHDIR
 ```
+
+# links to software packages
+
+for Kite:
+git clone https://github.com/pyrocko/kite.git
+
+for InSAMP:
+git clone https://github.com/williamBarnhart/InSamp.git
