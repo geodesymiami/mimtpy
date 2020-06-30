@@ -8,6 +8,7 @@
 import os
 import sys
 import argparse
+import copy
 import numpy as np
 import json
 from mintpy.utils import readfile, writefile
@@ -98,14 +99,9 @@ def min(a,b):
     else:
         return b
 
-def calculate_overlay(inps):
+def calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag):
     parser = create_parser()
     
-    m_atr = readfile.read_attribute("".join(inps.master))
-    m_data = readfile.read("".join(inps.master))[0]
-    s_atr = readfile.read_attribute("".join(inps.slave))
-    s_data = readfile.read("".join(inps.slave))[0]
-
     # calculate overlay region
     # lat lon range of master and slave
     m_lat0, m_lon0, m_lat1, m_lon1 = get_bounding_box(m_atr)
@@ -150,29 +146,31 @@ def calculate_overlay(inps):
     s_row0, s_colm0 = calculate_rc(s_lat0,s_lon0,over_lat0,over_lon0,float(s_atr['Y_STEP']),float(s_atr['X_STEP']))
     #s_row1, s_colm1 = calculate_rc(s_lat0,s_lon0,over_lat1,over_lon1,float(s_atr['Y_STEP']),float(s_atr['X_STEP']))
 
-    # calculate overlay region in master and slave
-    m_overlay = m_data[m_row0 : m_row0 + overlay_rows,m_colm0 : m_colm0 + overlay_colms]
-    s_overlay = s_data[s_row0 : s_row0 + overlay_rows,s_colm0 : s_colm0 + overlay_colms]
+    if typeflag == 0:
+        # calculate overlay region in master and slave
+        m_overlay = m_data[m_row0 : m_row0 + overlay_rows,m_colm0 : m_colm0 + overlay_colms]
+        s_overlay = s_data[s_row0 : s_row0 + overlay_rows,s_colm0 : s_colm0 + overlay_colms]
 
-    # calculate offset between master and slave
-    offset_overlay = m_overlay - s_overlay
-    offset = np.nanmedian(offset_overlay)
-    if 'Y_FIRST' in m_atr.keys():
-        ref_lat = m_atr['REF_LAT']
-        ref_lon = m_atr['REF_LON']
-        ref_x = m_atr['REF_X']
-        ref_y = m_atr['REF_Y']
+        # calculate offset between master and slave
+        offset_overlay = m_overlay - s_overlay
+        offset = np.nanmedian(offset_overlay)
+        if 'Y_FIRST' in m_atr.keys():
+            ref_lat = m_atr['REF_LAT']
+            ref_lon = m_atr['REF_LON']
+            ref_x = m_atr['REF_X']
+            ref_y = m_atr['REF_Y']
+        else:
+            ref_x = m_atr['REF_X']
+            ref_y = m_atr['REF_Y']
+        
+        print('The average offset is : %f \n' % offset)
+       
+        return offset, m_row0, m_colm0, s_row0, s_colm0, over_lat0, over_lon0, overlay_rows, overlay_colms
     else:
-        ref_x = m_atr['REF_X']
-        ref_y = m_atr['REF_Y']
-    
-    print('The average offset is : %f \n' % offset)
-   
-    return offset, m_row0, m_colm0, s_row0, s_colm0, over_lat0, over_lon0, overlay_rows, overlay_colms
+        return m_row0, m_colm0, s_row0, s_colm0, over_lat0, over_lon0, overlay_rows, overlay_colms
 
-def rewrite_slave(inps,offset):
-    s_atr = readfile.read_attribute("".join(inps.slave))
-    s_data = readfile.read("".join(inps.slave))[0] 
+
+def rewrite_slave(inps,offset,s_atr,s_data):
 
     s_data_offset = s_data + offset
     #if inps.output == None: 
@@ -202,13 +200,11 @@ def sum_matrix_nan(matrix1,matrix2):
                 matrix_sum[row,colm] = np.nansum([matrix1[row,colm],matrix2[row,colm]])
     return matrix_sum
  
-def mosaic_tracks(inps,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms):
+def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms):
     """mosaic two tracks"""
-    m_atr = readfile.read_attribute("".join(inps.master))
-    m_data = readfile.read("".join(inps.master))[0]
+    mm_atr = copy.deepcopy(m_atr) 
     m_rows,m_colms = m_data.shape
     
-    s_atr = readfile.read_attribute("".join(inps.slave))
     s_data = s_data_offset
     s_rows,s_colms = s_data.shape
     
@@ -275,12 +271,16 @@ def mosaic_tracks(inps,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,ove
     #mosaic_data = mosaic_data / mosaic_freq
 
     # write the mosaic data
-    mosaic_atr = m_atr
+    mosaic_atr = mm_atr
     mosaic_atr['LENGTH'] = mosaic_rows
     mosaic_atr['WIDTH'] = mosaic_colms
     mosaic_atr['X_FIRST'] = mosaic_lon0
     mosaic_atr['Y_FIRST'] = mosaic_lat0
     
+    return mosaic_data, mosaic_atr
+
+def write_mosaic(inps, mosaic_data, mosaic_atr):
+    """write mosaic data"""
     if inps.output == None: 
         out_file = '{}{}{}'.format(os.path.split("".join(inps.slave))[1].split('.')[0], '_mosaic.', os.path.split("".join(inps.slave))[1].split('.')[1])
         #out_file = '{}{}{}'.format(os.path.split("".join(inps.slave))[1].split('.')[0], '_mosaic.', 'unw')
@@ -294,17 +294,62 @@ def mosaic_tracks(inps,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,ove
 
     print('writing mosaic files:\n')
     writefile.write(mosaic_data, out_file=out_dir_file, metadata=mosaic_atr)
+
+def judge_data_datasets(m_atr):
+    """judage master/slave is data(velocity or .unw) or dataset (geometry)"""
+    file_type = m_atr['FILE_TYPE']
+    if file_type == 'geometry':
+        typeflag = 1
+    else:
+        typeflag = 0
+
+    return typeflag
         
 ######################################################################################
 def main(iargs=None):
     """simulate LOS displacement"""
     inps = cmd_line_parse(iargs)
 
-    offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps)
-    s_data_offset = rewrite_slave(inps,offset)
-    if inps.mosaic:
-        print('prepare mosaicing:\n')
-        mosaic_tracks(inps,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+    # master and slave data attribute
+    m_atr = readfile.read_attribute("".join(inps.master))
+    s_atr = readfile.read_attribute("".join(inps.slave))
+    
+    # judge file type
+    typeflag = judge_data_datasets(m_atr)
+    
+    if typeflag == 0:
+        # master data
+        m_data = readfile.read("".join(inps.master))[0]
+        # slave data
+        s_data = readfile.read("".join(inps.slave))[0]
+         
+        # calculated offset and mosaic two tracks
+        offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag)
+        s_data_offset = rewrite_slave(inps,offset,s_atr,s_data)
+        if inps.mosaic:
+            print('prepare mosaicing:\n')
+            mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+            write_mosaic(inps,mosaic_data, mosaic_atr)
+    else:
+        dataslice = ['azimuthAngle', 'height', 'incidenceAngle', 'latitude', 'longitude', 'shadowMask', 'slantRangeDistance']
+        m_file = "".join(inps.master)
+        s_file = "".join(inps.slave)
+        
+        mosaic_dataset = dict()
+        
+        for dslice in dataslice:
+            m_data = readfile.read(m_file, datasetName=dslice)[0]
+            s_data = readfile.read(s_file, datasetName=dslice)[0]
+            # calculated overlay region
+            m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag)
+            if inps.mosaic:
+                print('prepare mosaicing for: %s\n' % dslice)
+                mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+                mosaic_dataset[dslice] = mosaic_data 
+                print('finish mosaic %s' % dslice)       
+        write_mosaic(inps,mosaic_dataset, mosaic_atr)
+
+          
 ######################################################################################
 if __name__ == '__main__':
     main()
