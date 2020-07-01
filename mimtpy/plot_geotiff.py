@@ -21,11 +21,14 @@ max_figsize_height = 8.0       # max figure size in vertical direction in inch
 
 ######################################################################################
 EXAMPLE = """example:
-    plot_geotiff.py geotiff_file --fault /data/lxrtest/Balochistan/shp/multifault.shp --refpoi /data/lxrtest/Balochistan/shp/refpoi_DT.shp --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor b r --fstyle s d --refpoi refpoi_DT.shp --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
     
-    plot_geotiff.py geotiff_file --fault /data/lxrtest/Balochistan/shp/multifault.shp --refpoi /data/lxrtest/Balochistan/shp/refpoi_DT.shp --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
 """
 
+fcolor_table = {'b':'black','r':'red','y':'yellow','o':'orange','m':'megenta'}
+flinestyle_table = {'s':'solid','d':'dashed'}
+#######################################################################################
 def create_parser():
     parser = argparse.ArgumentParser(description='plot *.tiff',
                                      formatter_class=argparse.RawTextHelpFormatter,
@@ -33,8 +36,15 @@ def create_parser():
 
     parser.add_argument('input_geotiff', nargs=1, type=str, help='geotiff file. \n')
 
-    parser.add_argument('--fault', nargs=1, type=str, help='shp file of fault. \n')
+    parser.add_argument('--shpdir', nargs=1, type=str, help='directory of shp files. \n')
+
+    parser.add_argument('--fault', nargs='+', type=str, help='shp files of fault. \n')
     
+    parser.add_argument('--fcolor', nargs='+', type=str, help='define color for faults:'
+                                                              'b -> black; r -> red; y -> yellow;'
+                                                              'o -> orange; m-> magenta \n')
+    parser.add_argument('--fstyle', nargs='+', type=str, help='define line stype for faults:'
+                                                              's -> solid; d -> dashed \n')
     parser.add_argument('--refpoi', nargs=1, type=str, help='shp file of reference point. \n')
    
     parser.add_argument('--vlim', dest = 'vlim', nargs=2, type=float, help='max and min value of colorbar.the unit is m. \n')   
@@ -63,11 +73,41 @@ def auto_figure_size(shape, disp_cbar=False, ratio=1.0):
     fig_size = [i*fig_scale*ratio for i in plot_shape]
     return fig_size
 
+def fcolor(fcolors, shp_faults):
+    """define fault color"""
+    fault_colors = dict()
+    for fcolor, fault in zip(fcolors,shp_faults):
+        color = fcolor_table[fcolor]
+        fault_colors[fault] = color
+
+    return fault_colors
+
+def flinestyle(fstyles, shp_faults):
+    """defind fault linestyle"""
+    fault_linestyles = dict()
+    for fstyle, fault in zip(fstyles, shp_faults):
+        style = flinestyle_table[fstyle]
+        fault_linestyles[fault] = style
+
+    return fault_linestyles
+
 def plot_geotiff(inps):
     """read geotiff data"""
+
+    shpdir = inps.shpdir[0]
+
+    # read raster file
     raster = rasterio.open(inps.input_geotiff[0])
-    shp_fault = geopandas.read_file(inps.fault[0])
-    shp_refpoi = geopandas.read_file(inps.refpoi[0])
+    
+    # read shape files
+    shp_refpoi = geopandas.read_file(shpdir + inps.refpoi[0])
+    
+    # read fault files and set color/linestyle
+    shp_faults = dict()
+    for fault in inps.fault:
+        shp_faults[fault] = geopandas.read_file(shpdir + fault)
+    fault_colors = fcolor(inps.fcolor, shp_faults)
+    fault_linestyles = flinestyle(inps.fstyle, shp_faults)
 
     """plot geotiff"""
     raster_data = raster.read(1)
@@ -86,7 +126,9 @@ def plot_geotiff(inps):
     print('\n\n***************************************ploting raster data****************************************')
     rasterio.plot.show(raster,1,ax = ax1, cmap=cmap,vmin = raster_min, vmax = raster_max, alpha=0.8)
     print('\n\n***************************************ploting fault**********************************************')
-    shp_fault.plot(color='black',ax = ax1,linestyle='dashed',linewidth=1)
+    for fault in inps.fault:
+        shp_faults[fault].plot(color=fault_colors[fault],ax=ax1, linestyle=fault_linestyles[fault], linewidth=1)
+    #shp_fault.plot(color='black',ax = ax1,linestyle='dashed',linewidth=1)
     print('\n\n************************************ploting reference point****************************************')
     shp_refpoi.plot(color='black',ax=ax1,marker='s')
     ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=True)
