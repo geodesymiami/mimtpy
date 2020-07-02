@@ -11,7 +11,7 @@ H5UNW_to_geotiff.py: transferring *.unw or *.h5 file into geotiff file.
 
 HDFEOS_to_geotiff.py: transferring S1**.he5 file into *.h5 and *.geotiff files based on given dataset name.
 
-plot_geotiff.py: plot geotiff files with given *.shp files. Now the *.shp files are fault trace and reference point. The shp files must be given or people can use view.py script to draw picture based on the above *.h5 files
+plot_geotiff.py: plot geotiff files with given *.shp files and gps velocity vector field. Now the *.shp files are fault trace and reference point. The shp files must be given or people can use view.py script to draw picture based on the above *.h5 files.The gps site are now from NGLStation dataset.We are working on other gps dataset.
 
 save_geodmod.py: generate files used by Geodmod software.
 
