@@ -128,10 +128,10 @@ def extract_data(inps,dataset,outdir):
             slice_list = readfile.get_slice_list("".join(inps.input_HDFEOS))
             # read/prepare data
             dname = 'displacement'
-            slice_name1 = view.check_dataset_input(slice_list, '{}-{}'.format(dname, date1))[0][0]
-            slice_name2 = view.check_dataset_input(slice_list, '{}-{}'.format(dname, date2))[0][1]
-            data = readfile.read("".join(inps.input_HDFEOS), datasetName=slice_name1)[0]
-            data -= readfile.read("".join(inps.input_HDFEOS), datasetName=slice_name2)[0]
+            slice_name1 = view.search_dataset_input(slice_list, '{}-{}'.format(dname, date1))[0][0]
+            slice_name2 = view.search_dataset_input(slice_list, '{}-{}'.format(dname, date2))[0][1]
+            data = readfile.read("".join(inps.input_HDFEOS), datasetName=slice_name2)[0]
+            data -= readfile.read("".join(inps.input_HDFEOS), datasetName=slice_name1)[0]
             data_name = '{}_{}_{}'.format(attr,date1,date2)
             if inps.mask:
                 print("mask file")
