@@ -229,8 +229,6 @@ def plot_geotiff(inps, site_infovel=None):
     shp_refpoi.plot(color='black',ax=ax1,marker='s')
    
     # plot gps velocity vector field
-    #import pdb
-    #pdb.set_trace()
     if site_infovel is not None:
         lon = list(site_infovel[:,2].astype(float))
         lat = list(site_infovel[:,1].astype(float))
@@ -265,9 +263,8 @@ def plot_geotiff(inps, site_infovel=None):
     if filetype == 'velocity': 
         cbar.set_label('velocity [cm/year]', fontdict=font2)
     elif filetype == 'displacement':
-        cbar.set_label('displacement [cm/year]', fontdict=font2)
+        cbar.set_label('displacement [cm]', fontdict=font2)
 
-    #设置横纵坐标刻度值大小及字体
     font1 = {'family' : 'serif',
              'weight': 'normal',
              'size' : 18.}
