@@ -79,17 +79,11 @@ Browse through all directories using: https://129.114.104.223/data/HDF5EOS
 
 Get them via wget using:
 ```
-wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" --no-check-certificate https://129.114.104.223/data/HDF5EOS/KashgarSenAT129/mintpy
+wget -r -nH --cut-dirs=2 --no-parent --reject="index.html*" --no-check-certificate https://129.114.104.223/data/HDF5EOS/unittestGalapagosSenDT128/mintpy
 ```
-If you have access to the server:
+If you have access to jetstream and  your public key is added in the .ssh directory:
 ```
 scp -rp centos@129.114.104.223:/data/HDF5EOS/KashgarSenAT129 .
-```
-
-If you have access to jetstream and added your public key in the .ssh directory, use rsync (which uses ssh):
-```
-rsync -avuz centos@129.114.104.223:/data/HDF5EOS/* $SCRATCHDIR
-rsync -avuz centos@129.114.104.223:/data/HDF5EOS/TaalSenDT32 $SCRATCHDIR
 ```
 
 # links to software packages
