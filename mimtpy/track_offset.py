@@ -205,7 +205,7 @@ def profile_write(lat_start, lon_start, lat_end, lon_end, name, outdir):
     gmt_file = outdir + 'profile_latlon_' + name + '.gmt'
     
     f = open(gmt_file, mode='w')
-    f.write('# @VGMT1.0 @GPOINT \n')
+    f.write('# @VGMT1.0 @GLINESTRING \n')
     f.writelines(['# @R',str(min(lon_start,lon_end)),'/',str(max(lon_start,lon_end)),'/',str(min(lat_start,lat_end)),'/', str(max(lat_start,lat_end)),'\n'])
     f.write('# @Je4326 \n')
     f.write('# @Jp"+proj=longlat +datum=WGS84 +no_defs" \n')
@@ -213,6 +213,7 @@ def profile_write(lat_start, lon_start, lat_end, lon_end, name, outdir):
     f.write('# @NId \n')
     f.write('# @Tinteger \n')
     f.write('# FEATURE_DATA \n')
+    f.write('>')
     f.write('# @D0 \n')
     f.writelines([str(lon_start), ' ', str(lat_start), '\n'])
     f.writelines([str(lon_end), ' ' , str(lat_end), '\n'])
