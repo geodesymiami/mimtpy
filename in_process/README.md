@@ -1,8 +1,10 @@
 # RELAX
 Relax implements a semi-analytic Fourier-domain solver and equivalent body forces to compute quasi-static relaxation of stress perturbation.
 
-Note: the github repo for RELAX can not be found now. Please download RELAX software from this website:
+Note: Please download RELAX software from the website:
 http://geodynamics.org/cig/software/relax/
+OR downlaod RELAX software from github:
+git clone: --recursive https://github.com/geodynamics/relax.git
 
 Usage:
 1. unzip the file
