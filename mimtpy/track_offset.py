@@ -18,7 +18,6 @@ from mintpy.utils import readfile, writefile
 
 ######################################################################################
 EXAMPLE = """example:
-
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5  --rewrite_slave --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output mosaic --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
