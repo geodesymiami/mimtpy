@@ -218,7 +218,7 @@ def concatenation(inpsdict):
         
         #track_offset.py option
         rewrite_opt = inpsdict['mimtpy.concatenation.rewrite']
-        mosaic_opt = inpsdict['mimtpy.concatenation.mosaic']
+        plotpair_opt = inpsdict['mimtpy.concatenation.plotpair']
 
         # file_dir
         fmaster_dir = os.path.abspath(os.path.join(promaster_dir,file_type)) + '/'
@@ -240,14 +240,16 @@ def concatenation(inpsdict):
             outname = file_master + '_mosaic'
 
         if rewrite_opt == 'y':
-            if mosaic_opt == 'y':
-                scp_args = [Dmaster, Dslave, '--rewrite_slave', '--mosaic', '--output', outname, '--outdir', outdir]
-            elif mosaic_opt == 'n':
+            if plotpair_opt == 'y':
+                azi_angle = float(inpsdict['mimtpy.concatenation.azimuth'])
+                scp_args = [Dmaster, Dslave, '--rewrite_slave', '--output', outname, '--plotpair', '--azi_angle', azi_angle, '--outdir', outdir]
+            elif plotpair_opt == 'n':
                 scp_args = [Dmaster, Dslave, '--rewrite_slave', '--output', outname, '--outdir', outdir]
         elif rewrite_opt == 'n':
-            if mosaic_opt == 'y':
-                scp_args = [Dmaster, Dslave, '--mosaic', '--output', outname, '--outdir', outdir]
-            elif mosaic_opt == 'n':
+            if plotpair_opt == 'y':
+                azi_angle = float(inpsdict['mimtpy.concatenation.azimuth'])
+                scp_args = [Dmaster, Dslave, '--output', outname, '--plotpair', '--azi_angle', azi_angle, '--outdir', outdir]
+            elif plotpair_opt == 'n':
                 scp_args = [Dmaster, Dslave, '--output', outname, '--outdir', outdir]
         scp_args = mu.seperate_str_byspace(scp_args)
         
@@ -304,7 +306,12 @@ def plot(inpsdict):
                 for Vfile in Vfiles:
                     if Vfile.find(plot_type) >=0 and Vfile.find('.tiff')>0:
                         filename = Vfile
-                        fault = inpsdict['mimtpy.plot.fault']
+                        faults = inpsdict['mimtpy.plot.fault']
+                        faults = list(tuple(i for i in faults.split(',')))
+                        fcolor = inpsdict['mimtpy.plot.fcolor']
+                        fcolor = list(tuple(i for i in fcolor.split(',')))
+                        fstyle = inpsdict['mimtpy.plot.fstyle']
+                        fstyle = list(tuple(i for i in fstyle.split(',')))
                         refpoi = inpsdict['mimtpy.plot.refpoi']
                         vlim = inpsdict['mimtpy.plot.vlim']
                         outfile = filename.split('.')[0] 
