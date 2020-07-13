@@ -11,17 +11,21 @@ import argparse
 import copy
 import numpy as np
 import json
+import math
+import re
+import matplotlib.pyplot as plt
 from mintpy.utils import readfile, writefile
+
 ######################################################################################
 EXAMPLE = """example:
-    
-    track_offset.py $SCRATCHDIR/BogdSenDT33/full_mintpy/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/full_mintpy/mintpy/geo_velocity.h5 -b 45 46 101 102 
-    track_offset.py $SCRATCHDIR/BogdSenDT33/full_mintpy/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/full_mintpy/mintpy/geo_velocity.h5 -output velocity_off.h5  
-    track_offset.py $SCRATCHDIR/BogdSenDT33/full_mintpy/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/full_mintpy/mintpy/geo_velocity.h5 --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenAT/  
-    track_offset.py $SCRATCHDIR/BogdSenDT33/full_mintpy/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/full_mintpy/mintpy/geo_velocity.h5  --rewrite_slave --mosaic --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
-    track_offset.py $SCRATCHDIR/BogdSenDT33/full_mintpy/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/full_mintpy/mintpy/geo_velocity.h5 --mosaic --output mosaic --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
-"""
 
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5  --rewrite_slave --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
+
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output mosaic --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
+
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --azi_angle 11 --outdir ./
+
+"""
 
 def create_parser():
     parser = argparse.ArgumentParser(description='Concatenating two different tracks based on the overlay region',
@@ -38,8 +42,16 @@ def create_parser():
                         '    and the lower right corner of the last pixel')
    
     parser.add_argument('--rewrite_slave', action='store_true', default=False, help='whether rewrite slave *.h5 file after add the offset.\n')
-    parser.add_argument('--mosaic', action='store_true', default=False, help='whether mosaic two track data.') 
-    parser.add_argument('--output',dest='output',nargs=1,help='output name')
+    
+    plotpair_opt = parser.add_argument_group(title='whether plot profiles for overlay regions of both tracks')
+    plotpair_opt.add_argument('--plotpair', action='store_true', default=False, help='whether plot profiles for overlay regions of both tracks. \n')
+    plotpair_opt.add_argument('--azi_angle', dest='azimuth', type=float, help='profile direction relative to North in clockwise direction.'
+                                                                              ' Range=[0,pi); 0 degree: N-S; 90 degree: E-W.\n')
+
+    mosaic = parser.add_argument_group(title='mosaic options')
+    #mosaic.add_argument('--mosaic', action='store_true', default=False, help='whether mosaic two track data.') 
+    mosaic.add_argument('--output',dest='output',nargs=1,help='output name')
+    
     parser.add_argument('--outdir',dest='outdir',type=str,nargs=1,help='outdir')    
 
     return parser
@@ -165,10 +177,123 @@ def calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag):
         
         print('The average offset is : %f \n' % offset)
        
+        #if inps.plotpair:
+        #    out_dir = inps.outdir[0]
+        #    angle = inps.azimuth
+        #    overlay_profile(angle, m_overlay, s_overlay, m_name, s_name, out_dir)
+
         return offset, m_row0, m_colm0, s_row0, s_colm0, over_lat0, over_lon0, overlay_rows, overlay_colms
     else:
         return m_row0, m_colm0, s_row0, s_colm0, over_lat0, over_lon0, overlay_rows, overlay_colms
 
+def profile_latlon(row_overlay, colm_overlay, row0, colm0, atr):
+    """transfer pixel coordinate to lat/lon"""
+    row_wholeMatrix = row_overlay + row0
+    colm_wholeMatrix = colm_overlay + colm0
+    
+    x_step = float(atr["X_STEP"])
+    y_step = float(atr["Y_STEP"])
+    lat0 = float(atr["Y_FIRST"])
+    lon0 = float(atr["X_FIRST"]) 
+
+    lon = lon0 + x_step * colm_wholeMatrix
+    lat = lat0 + y_step * row_wholeMatrix
+
+    return lat, lon
+
+def profile_write(lat_start, lon_start, lat_end, lon_end, name, outdir):
+    """write lat/lon of two endpoints into gmt file"""
+    gmt_file = outdir + 'profile_latlon_' + name + '.gmt'
+    
+    f = open(gmt_file, mode='w')
+    f.write('# @VGMT1.0 @GPOINT \n')
+    f.writelines(['# @R',str(min(lon_start,lon_end)),'/',str(max(lon_start,lon_end)),'/',str(min(lat_start,lat_end)),'/', str(max(lat_start,lat_end)),'\n'])
+    f.write('# @Je4326 \n')
+    f.write('# @Jp"+proj=longlat +datum=WGS84 +no_defs"')
+    f.write('# @Jw"GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" \n')
+    f.write('# @NId \n')
+    f.write('# @Tinteger \n')
+    f.write('# FEATURE_DATA \n')
+    f.write('# @D0 \n')
+    f.writelines([str(lon_start), ' ', str(lat_start), '\n'])
+    f.writelines([str(lon_end), ' ' , str(lat_end), '\n'])
+    f.close()
+ 
+    return
+
+def overlay_profile(angle, m_overlay, s_overlay, m_row0, m_colm0, s_row0, s_colm0, m_atr, s_atr, m_name, s_name, outdir):
+    """plot profiles for overlay region of both tracks"""
+    # get the size of overlay region
+    rows, colms = np.shape(m_overlay)
+    # get the origin position of the overlay region.
+    colm_x = colms / 2
+    row_y = rows / 2
+
+    # calculat the intersect pixels between overlay region and profile
+    if angle >= 45 and angle <= 135:
+        # use colm to calculate row
+        colm_no = np.arange(colms)
+        if angle != 90:
+            tan_value = -1 * math.tan(angle * np.pi / 180)
+            row_no = np.ceil(((colm_no - colm_x) / tan_value) + row_y)
+        elif anlge == 90:
+            row_no = np.ceil(np.ones(colms) * row_y)
+    else:
+        # use row to calculate colm
+        row_no = np.arange(rows)
+        if angle != 0:
+            tan_value = -1 * math.tan(angle * np.pi / 180)
+            colm_no = np.ceil((row_no - row_y) * tan_value + colm_x)
+        elif anlge == 0:
+            colm_no = np.ceil(np.ones(rows) * colm_x)
+   
+    row_no = row_no.astype(dtype=np.int)
+    colm_no = colm_no.astype(dtype=np.int) 
+    m_profile = m_overlay[row_no, colm_no]    
+    s_profile = s_overlay[row_no, colm_no] 
+
+    # change zero value to np.nan
+    m_profile[(m_profile == 0)] = np.nan
+    s_profile[(s_profile == 0)] = np.nan
+
+    # calaculate lat/lon for profiles of two tracks
+    row_start = row_no[0]
+    row_end = row_no[-1]
+    colm_start = colm_no[0]
+    colm_end = colm_no[-1]
+    lat_start_m, lon_start_m = profile_latlon(row_start, colm_start, m_row0, m_colm0, m_atr)
+    lat_end_m, lon_end_m = profile_latlon(row_end, colm_end, m_row0, m_colm0, m_atr)
+    lat_start_s, lon_start_s = profile_latlon(row_start, colm_start, s_row0, s_colm0, s_atr)
+    lat_end_s, lon_end_s = profile_latlon(row_end, colm_end, s_row0, s_colm0, s_atr) 
+    
+    # save lat/lon files in gmt format
+    profile_write(lat_start_m, lon_start_m, lat_end_m, lon_end_m, m_name, outdir)
+    profile_write(lat_start_s, lon_start_s, lat_end_s, lon_end_s, s_name, outdir)
+
+    # plot two profiles
+    figure_size = [10,8]
+    fig,axes = plt.subplots(1,1,figsize = figure_size)
+    ax1 = axes
+    print('*****************************ploting profile************************')       
+    x_axis = np.arange(1,len(m_profile)+1)
+    ax1.plot(x_axis, m_profile, color='black', linestyle='-', label=m_name)
+    ax1.plot(x_axis, s_profile, color='blue', linestyle='-', label=s_name)
+
+    ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=True)
+    font1 = {'family' : 'serif',
+             'weight': 'normal',
+             'size' : 18.}
+    ax1.set_xlabel('Distance [km]',font1)
+    ax1.set_ylabel('LOS Displacement [cm]',font1)
+    labels = ax1.get_xticklabels() + ax1.get_yticklabels()
+    [label.set_fontname('serif') for label in labels]
+   
+    ax1.legend(loc='upper left', prop=font1)
+     
+    #save figure
+    fig_name = 'Profiles.png'
+    fig_output = outdir + fig_name
+    fig.savefig(fig_output, dpi=300, bbox_inches='tight')
 
 def rewrite_slave(inps,offset,s_atr,s_data):
 
@@ -277,6 +402,16 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     mosaic_atr['X_FIRST'] = mosaic_lon0
     mosaic_atr['Y_FIRST'] = mosaic_lat0
     
+    if inps.plotpair:
+        # master and slave data name
+        m_name_tmp = os.path.split("".join(inps.master))[0]
+        s_name_tmp = os.path.split("".join(inps.slave))[0]
+        m_name= re.search('Sen([^/]+)/', m_name_tmp)[1]
+        s_name = re.search('Sen([^/]+)/', s_name_tmp)[1]
+        out_dir = inps.outdir[0]
+        angle = inps.azimuth
+        overlay_profile(angle, m_overlay, s_overlay, m_row0, m_colm0, s_row0, s_colm0, m_atr, s_atr, m_name, s_name, out_dir)
+
     return mosaic_data, mosaic_atr
 
 def write_mosaic(inps, mosaic_data, mosaic_atr):
@@ -326,10 +461,11 @@ def main(iargs=None):
         # calculated offset and mosaic two tracks
         offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag)
         s_data_offset = rewrite_slave(inps,offset,s_atr,s_data)
-        if inps.mosaic:
-            print('prepare mosaicing:\n')
-            mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
-            write_mosaic(inps,mosaic_data, mosaic_atr)
+            
+        print('prepare mosaicing:\n')
+        mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+        write_mosaic(inps,mosaic_data, mosaic_atr)
+            
     else:
         dataslice = ['azimuthAngle', 'height', 'incidenceAngle', 'latitude', 'longitude', 'shadowMask', 'slantRangeDistance']
         m_file = "".join(inps.master)
@@ -342,11 +478,11 @@ def main(iargs=None):
             s_data = readfile.read(s_file, datasetName=dslice)[0]
             # calculated overlay region
             m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag)
-            if inps.mosaic:
-                print('prepare mosaicing for: %s\n' % dslice)
-                mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
-                mosaic_dataset[dslice] = mosaic_data 
-                print('finish mosaic %s' % dslice)       
+                
+            print('prepare mosaicing for: %s\n' % dslice)
+            mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+            mosaic_dataset[dslice] = mosaic_data 
+            print('finish mosaic %s' % dslice)       
         write_mosaic(inps,mosaic_dataset, mosaic_atr)
 
           
