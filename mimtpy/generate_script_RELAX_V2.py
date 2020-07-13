@@ -33,7 +33,7 @@ def create_parser():
 
     parser.add_argument('--template_dir', dest='template_dir',nargs=1,help='template files dir.\n')
 
-    parser.add_argument('--PBS', action='store_true', default=False)
+    parser.add_argument('--PBS', action='store_true', default=False, help='whether generate PBS scripts. \n')
 
     return parser
 
