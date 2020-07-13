@@ -17,7 +17,6 @@ STEP_LIST = [
      'velcumu',
      'horzvert',
      'concatenation',
-     'plot',
      'geodmod',
 ]
 
@@ -269,67 +268,67 @@ def concatenation(inpsdict):
         print('\nSkip concatenation process')       
     return
 
-def plot(inpsdict):
-    """plot."""
-    if inpsdict['mimtpy.plot'] == 'yes':
-        print('Start ploting data')
-        plot_type = inpsdict['mimtpy.plot.type']
-        if plot_type == 'velocity' or plot_type == 'displacement':
-            Dataset = inpsdict['mimtpy.velcumu.DataSet'] 
-            Dataset = list(tuple([i for i in Dataset.split(',')]))
-            for dataset in Dataset:
-                # go to dataset_dir
-                dataset_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR'),dataset,'mintpy'))
-                if not os.path.isdir(dataset_dir):
-                    raise Exception('Error! No such dir : {}'.format(dataset_dir))
-                os.chdir(dataset_dir)
-                # go to data to be plotted dir
-                plot_dir = os.path.abspath(os.path.join(dataset_dir,plot_type)) + '/'
-                if not os.path.isdir(plot_dir):
-                    raise Exception('Error! No such dir : {}'.format(plot_dir))
-                print('plotting {} data in {} dir'.format(plot_type,plot_dir))
-        #elif plot_type == 'horzvert':
-        #    plot_dir = inpsdict['mimtpy.horzvert.outdir']
-        #elif plot_type == 'coneatenation':
-        #    plot_dir = inpsdict['mimtpy.coneatenation.outdir']
-        
-                print('Go to %s.\n' % plot_dir)
-                os.chdir(plot_dir)
-        
-                # plot data
-                Vfiles = []
-                path_list = os.listdir(plot_dir)
-                for Vfile in path_list:
-                    Vfiles.append(Vfile)
-                Vfiles.sort()
-                
-                for Vfile in Vfiles:
-                    if Vfile.find(plot_type) >=0 and Vfile.find('.tiff')>0:
-                        filename = Vfile
-                        faults = inpsdict['mimtpy.plot.fault']
-                        faults = list(tuple(i for i in faults.split(',')))
-                        fcolor = inpsdict['mimtpy.plot.fcolor']
-                        fcolor = list(tuple(i for i in fcolor.split(',')))
-                        fstyle = inpsdict['mimtpy.plot.fstyle']
-                        fstyle = list(tuple(i for i in fstyle.split(',')))
-                        refpoi = inpsdict['mimtpy.plot.refpoi']
-                        vlim = inpsdict['mimtpy.plot.vlim']
-                        outfile = filename.split('.')[0] 
-                        if vlim == 'None':
-                            scp_args = [filename, '--fault', fault, '--refpoi', refpoi, '--outfile', outfile, '--outdir', plot_dir]
-                        else:
-                            vlim = list(tuple([float(i) for i in vlim.split(',')]))
-                            scp_args = [filename, '--fault', fault, '--refpoi', refpoi, '--vlim', vlim, '--outfile', outfile, '--outdir', plot_dir]
-
-                        scp_args = mu.seperate_str_byspace(scp_args)
-                        # run plot_geotiff.py
-                        print('\n*********************ploting %s file********************' % Vfile)
-                        print('plot_geotiff.py',scp_args)
-                        mimtpy.plot_geotiff.main(scp_args.split())   
-    else:
-        print('\nSkip plot process')        
-
-    return
+#def plot(inpsdict):
+#    """plot."""
+#    if inpsdict['mimtpy.plot'] == 'yes':
+#        print('Start ploting data')
+#        plot_type = inpsdict['mimtpy.plot.type']
+#        if plot_type == 'velocity' or plot_type == 'displacement':
+#            Dataset = inpsdict['mimtpy.velcumu.DataSet'] 
+#            Dataset = list(tuple([i for i in Dataset.split(',')]))
+#            for dataset in Dataset:
+#                # go to dataset_dir
+#                dataset_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR'),dataset,'mintpy'))
+#                if not os.path.isdir(dataset_dir):
+#                    raise Exception('Error! No such dir : {}'.format(dataset_dir))
+#                os.chdir(dataset_dir)
+#                # go to data to be plotted dir
+#                plot_dir = os.path.abspath(os.path.join(dataset_dir,plot_type)) + '/'
+#                if not os.path.isdir(plot_dir):
+#                    raise Exception('Error! No such dir : {}'.format(plot_dir))
+#                print('plotting {} data in {} dir'.format(plot_type,plot_dir))
+#        #elif plot_type == 'horzvert':
+#        #    plot_dir = inpsdict['mimtpy.horzvert.outdir']
+#        #elif plot_type == 'coneatenation':
+#        #    plot_dir = inpsdict['mimtpy.coneatenation.outdir']
+#        
+#                print('Go to %s.\n' % plot_dir)
+#                os.chdir(plot_dir)
+#        
+#                # plot data
+#                Vfiles = []
+#                path_list = os.listdir(plot_dir)
+#                for Vfile in path_list:
+#                    Vfiles.append(Vfile)
+#                Vfiles.sort()
+#                
+#                for Vfile in Vfiles:
+#                    if Vfile.find(plot_type) >=0 and Vfile.find('.tiff')>0:
+#                        filename = Vfile
+#                        faults = inpsdict['mimtpy.plot.fault']
+#                        faults = list(tuple(i for i in faults.split(',')))
+#                        fcolor = inpsdict['mimtpy.plot.fcolor']
+#                        fcolor = list(tuple(i for i in fcolor.split(',')))
+#                        fstyle = inpsdict['mimtpy.plot.fstyle']
+#                        fstyle = list(tuple(i for i in fstyle.split(',')))
+#                        refpoi = inpsdict['mimtpy.plot.refpoi']
+#                        vlim = inpsdict['mimtpy.plot.vlim']
+#                        outfile = filename.split('.')[0] 
+#                        if vlim == 'None':
+#                            scp_args = [filename, '--fault', fault, '--refpoi', refpoi, '--outfile', outfile, '--outdir', plot_dir]
+#                        else:
+#                            vlim = list(tuple([float(i) for i in vlim.split(',')]))
+#                            scp_args = [filename, '--fault', fault, '--refpoi', refpoi, '--vlim', vlim, '--outfile', outfile, '--outdir', plot_dir]
+#
+#                        scp_args = mu.seperate_str_byspace(scp_args)
+#                        # run plot_geotiff.py
+#                        print('\n*********************ploting %s file********************' % Vfile)
+#                        print('plot_geotiff.py',scp_args)
+#                        mimtpy.plot_geotiff.main(scp_args.split())   
+#    else:
+#        print('\nSkip plot process')        
+#
+#    return
     
 def geodmod(inpsdict):
     """prepare data for geodmod software"""
@@ -393,8 +392,8 @@ def run(inpsdict, steps=STEP_LIST):
         elif sname == 'concatenation':
             concatenation(inpsdict)
     # plot results
-        elif sname == 'plot': 
-            plot(inpsdict)  
+        #elif sname == 'plot': 
+        #    plot(inpsdict)  
         elif sname == 'geodmod':
             geodmod(inpsdict)
     return        
