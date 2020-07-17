@@ -9,6 +9,7 @@ import os
 import argparse
 import numpy as np
 import netCDF4 as nc
+import copy
 
 import mintpy
 from mintpy.utils import readfile, writefile, utils as ut
@@ -32,6 +33,8 @@ EXAMPLE = """example:
   
   relax_grd_step2.py 063-058-relax-geo ../Mintpy/dis_2015_2020.h5 --LOS -g $SCRATCHDIR/BogdSenDT/geometry/geo_geometry.h5 --output 063-058-relax --outdir ./HDFEOS/
   
+  relax_grd_step2.py 063-058-relax-geo ../Mintpy/dis_2015_2020.h5 --LOS --inc_angle 34 --azi_angle -102 --output 063-058-relax --outdir ./HDFEOS/
+  
   relax_grd_step2.py 063-058-relax-geo ../Mintpy/dis_2015_2020.h5 --residual -g $SCRATCHDIR/BogdSenDT/geometry/geo_geometry.h5 --output 063-058-relax --outdir ./HDFEOS/
 """
 Direction=['east',
@@ -52,7 +55,11 @@ def create_parser():
  
     parser.add_argument('--residual', action='store_true', default=False, help='whether calculat resicual between LOS simualtion and InSAR\n')
 
-    parser.add_argument('-g', '--geometry', dest='geometry', nargs='+', type=str, help='geometry data containing incidence and azimuth\n')
+    parser.add_argument('-g', '--geometry', dest='geometry', nargs='?', type=str, help='geometry data containing incidence and azimuth\n')
+
+    parser.add_argument('--inc_angle', dest='inc_angle', nargs='?', type=float, help='incidence angle\n')
+
+    parser.add_argument('--azi_angle', dest='azi_angle', nargs='?', type=float, help='azimuth angle\n')    
 
     parser.add_argument('--output', dest='output', nargs=1, type=str, help='outfile name\n')
  
@@ -115,15 +122,23 @@ def relax_mask(inps):
 
 def LOS_calculation(grd_dict, grd_atr, inps):
     """calcualte simulated LOS deformation"""
-    # geometry data 
-    geometryRadar = inps.geometry[0]
-    print('processing geometry data {}'.format(geometryRadar))
-    inc_angle = readfile.read(geometryRadar, datasetName='incidenceAngle')[0]
-    azi_angle = readfile.read(geometryRadar, datasetName='azimuthAngle')[0]
+    if not inps.geometry:
+        inc_angle = inps.inc_angle
 
-    # heading angle
-    head_angle = ut.azimuth2heading_angle(azi_angle) 
-    head_angle[head_angle<0.]+= 360.
+        head_angle = ut.azimuth2heading_angle(inps.azi_angle)
+        if head_angle < 0.:
+            head_angle += 360.
+    else:
+        # geometry data 
+        geometryRadar = inps.geometry[0]
+        print('processing geometry data {}'.format(geometryRadar))
+        inc_angle = readfile.read(geometryRadar, datasetName='incidenceAngle')[0]
+        azi_angle = readfile.read(geometryRadar, datasetName='azimuthAngle')[0]
+
+        # heading angle
+        head_angle = ut.azimuth2heading_angle(azi_angle) 
+        head_angle[head_angle<0.]+= 360.
+    
     head_angle *= np.pi/180.
 
     # incidence angle
