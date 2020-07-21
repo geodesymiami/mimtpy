@@ -21,6 +21,8 @@ import mintpy.objects.gps as gps
 from mintpy.objects.gps import GPS
 from mintpy.utils import utils as ut
 
+import mimtpy.objects.cgps as cgps
+from mimtpy.objects.cgps import CGPS
 
 min_figsize_single = 6.0       # default min size in inch, for single plot
 max_figsize_single = 10.0      # default min size in inch, for single plot
@@ -36,19 +38,19 @@ EXAMPLE = """example:
    
     # plot shape file and gps velocity vector field
     # plot single gps site with extracting incidence and heading angle from geometreRadar 
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --gps_name GV05 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type NGPS --gps_name GV05 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
     
     # plot single gps site using typical incidence and heading angle for Seitinel1
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --gps_name GV05 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type CGPS --gps_name AHAQ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
     
     # plot multiple gps sites with extracting incidence and heading angle from geometreRadar 
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --search --bbox 36 40 36 39 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type NGPS --search --bbox 36 40 36 39 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
     
     # plot multiple gps sites with extracting incidence and heading angle from geometreRadar 
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --search --bbox 36 40 36 39 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type CGPS --search --bbox 30 35 101 106  --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
 """
 
-fcolor_table = {'b':'black','r':'red','y':'yellow','o':'orange','m':'megenta'}
+fcolor_table = {'b':'black','r':'red','y':'yellow','o':'orange','m':'magenta'}
 flinestyle_table = {'s':'solid','d':'dashed'}
 #######################################################################################
 def create_parser():
@@ -75,6 +77,8 @@ def create_parser():
     
     gps_option.add_argument('--gps_putton', action='store_true', default=False, help='whether plot gps velocity vector field. \n')
 
+    gps_option.add_argument('--type', dest='Gtype', type=str, nargs=1, help='CGPS: China GPS database; NGPS: Nevada GPS database')
+    
     gps_option.add_argument('--search', action='store_true', default=False, help='whether search gps sites based on the given SNWE. \n')
    
     gps_option.add_argument('--bbox', dest='SNWE', type=float, nargs=4, metavar=('S', 'N','W','E'),
@@ -85,7 +89,7 @@ def create_parser():
 
     gps_option.add_argument('--geometry', dest='geometry', nargs='?', type=str, help='geometry data. \n')
 
-    gps_option.add_argument('--gpsdir', dest='gpsdir',nargs=1, type=str, help='directory to store gps data. \n')
+    gps_option.add_argument('--gpsdir', dest='gpsdir',nargs='?', type=str, help='directory to store Nevada Geodetic Lab gps data. \n')
 
     parser.add_argument('--vlim', dest = 'vlim', nargs=2, type=float, help='max and min value for displacement to display. The unit is m. \n')   
  
@@ -131,26 +135,23 @@ def flinestyle(fstyles, shp_faults):
 
     return fault_linestyles
 
-def gps_multisites(gpsname, geometry, gps_dir):
-    """obtain multiple gps sites velocity field"""
-    gps_obj = GPS(site=gpsname, data_dir=gps_dir)
+def cgps_process(gpsname, geometry):
+    """process single gps site""" 
+    gps_obj = CGPS(site=gpsname)
     gps_obj.open()
     if not geometry:
-        dis_los = ut.enu2los(gps_obj.dis_e, gps_obj.dis_n, gps_obj.dis_u)
-        dates = gps_obj.dates
-        los_vel = dis_velocity(dates,dis_los) 
+        vel_los = ut.enu2los(gps_obj.vel_e, gps_obj.vel_n, gps_obj.vel_u)
+        los_vel = vel_los 
     else:
-        dates, dis_los = gps_obj.read_gps_los_displacement(geometry)
-        gps_obj.get_gps_los_velocity(geometry)
-        los_vel = gps_obj.velocity
+        gps_obj.read_gps_los_velocity(geometry)
+        los_vel = gps_obj.vel_los
     
-    e_vel = dis_velocity(dates, gps_obj.dis_e)
-    n_vel = dis_velocity(dates, gps_obj.dis_n)
-   
-    return np.array([[los_vel, n_vel, e_vel]])
+    site_inve = np.array([[gps_obj.site, gps_obj.site_lat, gps_obj.site_lon, los_vel, gps_obj.vel_n, gps_obj.vel_e]])
+    
+    return site_inve
 
-def gps_single(gpsname, geometry, gps_dir):
-    """process single gps site""" 
+def ngps_process(gpsname, geometry, gps_dir):
+    """process ngps sites""" 
     gps_obj = GPS(site=gpsname, data_dir=gps_dir)
     gps_obj.open()
     if not geometry:
@@ -182,7 +183,11 @@ def dis_velocity(dates, dis):
  
 def search_gpssites(inps):
     """search gps sites based on given SNWE"""
-    site_names, site_lats, site_lons = gps.search_gps(inps.SNWE)
+    if inps.Gtype[0] == 'NGPS':
+        site_names, site_lats, site_lons = gps.search_gps(inps.SNWE)
+    elif inps.Gtype[0] == 'CGPS':
+        site_names, site_lats, site_lons = cgps.search_gps(inps.SNWE)
+
     sites_baseinfo = np.transpose(np.vstack((np.vstack((np.array([site_names]),np.array([site_lats]))),np.array([site_lons])))) 
     
     return sites_baseinfo
@@ -284,18 +289,26 @@ def main(iagrs=None):
     # whether plot gps velocity vector field
     if inps.gps_putton:
         geodata = inps.geometry
-        gpsdir = inps.gpsdir[0]
         if inps.search:
             sites_baseinfo = search_gpssites(inps)
-            sites_velocity = np.zeros([sites_baseinfo.shape[0],3])
+            sites_vel = np.zeros([sites_baseinfo.shape[0],5])
             for gpsname, i in zip(sites_baseinfo[:,0],np.arange(sites_baseinfo.shape[0])):
-                site_ve = gps_multisites(str(gpsname),geodata,gpsdir)
-                sites_velocity[i,:] = site_ve
-            site_infovel = np.concatenate((sites_baseinfo,sites_velocity), axis=1)
+                if inps.Gtype[0] == 'NGPS':
+                    gpsdir = inps.gpsdir
+                    site_vel = ngps_process(str(gpsname),geodata,gpsdir)
+                elif inps.Gtype[0] == 'CGPS':
+                    site_vel = cgps_process(str(gpsname), geodata)          
+                sites_vel[i,:] = site_vel[0,1:]
+            site_infovel = np.concatenate((sites_baseinfo[:,0].reshape(sites_baseinfo.shape[0],1),sites_vel), axis=1)
             #print(sites_inve)
         else:
             gpsname = inps.gps_name
-            site_infovel = gps_single(gpsname, geodata, gpsdir)
+            if inps.Gtype[0] == 'NGPS':
+                gpsdir = inps.gpsdir
+                site_infovel = ngps_process(gpsname, geodata, gpsdir)
+            elif inps.Gtype[0] == 'CGPS':
+                site_infovel = cgps_process(str(gpsname), geodata)          
+                
             #print(site_inve)    
         plot_geotiff(inps,site_infovel)
     else:
