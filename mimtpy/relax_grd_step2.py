@@ -130,7 +130,7 @@ def LOS_calculation(grd_dict, grd_atr, inps):
             head_angle += 360.
     else:
         # geometry data 
-        geometryRadar = inps.geometry[0]
+        geometryRadar = inps.geometry
         print('processing geometry data {}'.format(geometryRadar))
         inc_angle = readfile.read(geometryRadar, datasetName='incidenceAngle')[0]
         azi_angle = readfile.read(geometryRadar, datasetName='azimuthAngle')[0]
