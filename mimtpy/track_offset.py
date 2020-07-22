@@ -24,6 +24,7 @@ EXAMPLE = """example:
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --azi_angle 11 --outdir ./
 
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometryRadar.h5 $SCRATCHDIR/BogdSenDT106/mintpy/inputs/geo_geometryRadar.h5 -ot ave --output Bogd_mosaic --outdir ./
 """
 
 def create_parser():
@@ -41,16 +42,24 @@ def create_parser():
                         '    and the lower right corner of the last pixel')
    
     parser.add_argument('--rewrite_slave', action='store_true', default=False, help='whether rewrite slave *.h5 file after add the offset.\n')
-    
+
     plotpair_opt = parser.add_argument_group(title='whether plot profiles for overlay regions of both tracks')
+
     plotpair_opt.add_argument('--plotpair', action='store_true', default=False, help='whether plot profiles for overlay regions of both tracks. \n')
+
     plotpair_opt.add_argument('--azi_angle', dest='azimuth', type=float, help='profile direction relative to North in clockwise direction.'
                                                                               ' Range=[0,pi); 0 degree: N-S; 90 degree: E-W.\n')
 
     mosaic = parser.add_argument_group(title='mosaic options')
     #mosaic.add_argument('--mosaic', action='store_true', default=False, help='whether mosaic two track data.') 
-    mosaic.add_argument('--output',dest='output',nargs=1,help='output name')
+    mosaic.add_argument('-ot', '--overlapTreatment', dest="overlapTreatment", nargs='?', type=str, 
+                         help='process method of incidence and azimuth angle for overlapping region,'
+                         'average: using average value of master and slave track for the overlapping region;'
+                         'master: using master swath value for the overlapping region;'
+                         'slave: using slave swath value for the overlapping region')   
     
+    mosaic.add_argument('--output',dest='output',nargs=1,help='output name')
+ 
     parser.add_argument('--outdir',dest='outdir',type=str,nargs=1,help='outdir')    
 
     return parser
@@ -325,7 +334,7 @@ def sum_matrix_nan(matrix1,matrix2):
                 matrix_sum[row,colm] = np.nansum([matrix1[row,colm],matrix2[row,colm]])
     return matrix_sum
  
-def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms):
+def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms,dslice=None):
     """mosaic two tracks"""
     mm_atr = copy.deepcopy(m_atr) 
     m_rows,m_colms = m_data.shape
@@ -345,16 +354,25 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     m_overlay[m_over_pos] = 0
     s_overlay[s_over_pos] = 0
 
-    mosaic_overlay_tmp = (m_overlay + s_overlay)
     # record the common np.nan in m and s(np.nan in mosaic_freq); one np.nan in m or s(1 in mosaic_freq);none np.nan in m and s(2 in mosaic_freq)
     both_nan = m_over_pos & s_over_pos
     none_nan = m_over_pos | s_over_pos
     mosaic_freq[both_nan] = np.nan
     mosaic_freq[~none_nan] = 2
     
+    mosaic_overlay_tmp = (m_overlay + s_overlay)
+   
+    if dslice:
+        if inps.overlapTreatment == 'master':
+            mosaic_overlay_tmp[~none_nan] = m_overlay[~none_nan]
+            mosaic_freq[~none_nan] = 1        
+        elif inps.overlapTreatment == 'slave':
+            mosaic_overlay_tmp[~none_nan] = s_overlay[~none_nan]
+            mosaic_freq[~none_nan] = 1        
+    
     # calculated final mosaic_overlay
     mosaic_overlay = mosaic_overlay_tmp / mosaic_freq
-
+    
     # generate mosaic dataset
     mosaic_rows = m_rows + s_rows - overlay_rows
     mosaic_colms = m_colms + s_colms - overlay_colms
@@ -480,7 +498,10 @@ def main(iargs=None):
             m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag)
                 
             print('prepare mosaicing for: %s\n' % dslice)
-            mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+            if dslice == 'incidenceAngle' or dslice == 'azimuthAngle':
+                mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms,dslice=dslice)
+            else:
+                mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
             mosaic_dataset[dslice] = mosaic_data 
             print('finish mosaic %s' % dslice)       
         write_mosaic(inps,mosaic_dataset, mosaic_atr)
