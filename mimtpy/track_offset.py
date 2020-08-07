@@ -340,7 +340,7 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
             
             pro_obj = Profile(1, angle_rad, point_lon, point_lat, m_overlay, s_overlay, over_lat0, over_lon0, m_atr, s_atr, outdir)
             pro_obj.profile_extract()
-            profiles.profile_plot(pro_obj.m_profile, pro_obj.s_profile, pro_obj.m_name, pro_obj.s_name, outdir)
+            profiles.profile_plot(pro_obj.lon_start, pro_obj.lat_start, pro_obj.lon_end, pro_obj.lat_end, pro_obj.m_profile, pro_obj.s_profile, pro_obj.m_name, pro_obj.s_name, outdir)
         else:
             pro_catalog = profiles.search_profiles(inps.pro_num, over_lat0, over_lon0, over_lat1, over_lon1, m_atr, s_atr)         
             profile_dict_list = []
