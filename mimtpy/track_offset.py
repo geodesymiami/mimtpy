@@ -13,8 +13,11 @@ import numpy as np
 import json
 import math
 import re
+
 import matplotlib.pyplot as plt
 from mintpy.utils import readfile, writefile
+from mimtpy.objects.profiles import Profile
+import mimtpy.objects.profiles as profiles
 
 ######################################################################################
 EXAMPLE = """example:
@@ -22,7 +25,9 @@ EXAMPLE = """example:
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output mosaic --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
 
-    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --azi_angle 11 --outdir ./
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --pro_num 1 --ll 99.5 45 --outdir ./
+    
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --pro_num 3 --outdir ./
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometryRadar.h5 $SCRATCHDIR/BogdSenDT106/mintpy/inputs/geo_geometryRadar.h5 -ot ave --output Bogd_mosaic --outdir ./
 """
@@ -47,8 +52,11 @@ def create_parser():
 
     plotpair_opt.add_argument('--plotpair', action='store_true', default=False, help='whether plot profiles for overlay regions of both tracks. \n')
 
-    plotpair_opt.add_argument('--azi_angle', dest='azimuth', type=float, help='profile direction relative to North in clockwise direction.'
-                                                                              ' Range=[0,pi); 0 degree: N-S; 90 degree: E-W.\n')
+    plotpair_opt.add_argument('--pro_num', dest='pro_num', type=int, help='profile numbers\n')
+
+    plotpair_opt.add_argument('--ll', dest='LONLAT', type=float, nargs=2,
+                              help='longitude and latitude of point that you want to profile pass through.'
+                                    'use this option when pro_num = 1.')
 
     mosaic = parser.add_argument_group(title='mosaic options')
     #mosaic.add_argument('--mosaic', action='store_true', default=False, help='whether mosaic two track data.') 
@@ -194,116 +202,6 @@ def calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag):
     else:
         return m_row0, m_colm0, s_row0, s_colm0, over_lat0, over_lon0, overlay_rows, overlay_colms
 
-def profile_latlon(row_overlay, colm_overlay, row0, colm0, atr):
-    """transfer pixel coordinate to lat/lon"""
-    row_wholeMatrix = row_overlay + row0
-    colm_wholeMatrix = colm_overlay + colm0
-    
-    x_step = float(atr["X_STEP"])
-    y_step = float(atr["Y_STEP"])
-    lat0 = float(atr["Y_FIRST"])
-    lon0 = float(atr["X_FIRST"]) 
-
-    lon = lon0 + x_step * colm_wholeMatrix
-    lat = lat0 + y_step * row_wholeMatrix
-
-    return lat, lon
-
-def profile_write(lat_start, lon_start, lat_end, lon_end, name, outdir):
-    """write lat/lon of two endpoints into gmt file"""
-    gmt_file = outdir + 'profile_latlon_' + name + '.gmt'
-    
-    f = open(gmt_file, mode='w')
-    f.write('# @VGMT1.0 @GLINESTRING \n')
-    f.writelines(['# @R',str(min(lon_start,lon_end)),'/',str(max(lon_start,lon_end)),'/',str(min(lat_start,lat_end)),'/', str(max(lat_start,lat_end)),'\n'])
-    f.write('# @Je4326 \n')
-    f.write('# @Jp"+proj=longlat +datum=WGS84 +no_defs" \n')
-    f.write('# @Jw"GEOGCS[\\"WGS 84\\",DATUM[\\"WGS_1984\\",SPHEROID[\\"WGS 84\\",6378137,298.257223563,AUTHORITY[\\"EPSG\\",\\"7030\\"]],AUTHORITY[\\"EPSG\\",\\"6326\\"]],PRIMEM[\\"Greenwich\\",0,AUTHORITY[\\"EPSG\\",\\"8901\\"]],UNIT[\\"degree\\",0.0174532925199433,AUTHORITY[\\"EPSG\\",\\"9122\\"]],AXIS[\\"Latitude\\",NORTH],AXIS[\\"Longitude\\",EAST],AUTHORITY[\\"EPSG\\",\\"4326\\"]]" \n')
-    f.write('# @NId \n')
-    f.write('# @Tinteger \n')
-    f.write('# FEATURE_DATA \n')
-    f.write('>')
-    f.write('# @D0 \n')
-    f.writelines([str(lon_start), ' ', str(lat_start), '\n'])
-    f.writelines([str(lon_end), ' ' , str(lat_end), '\n'])
-    f.close()
- 
-    return
-
-def overlay_profile(angle, m_overlay, s_overlay, m_row0, m_colm0, s_row0, s_colm0, m_atr, s_atr, m_name, s_name, outdir):
-    """plot profiles for overlay region of both tracks"""
-    # get the size of overlay region
-    rows, colms = np.shape(m_overlay)
-    # get the origin position of the overlay region.
-    colm_x = colms / 2
-    row_y = rows / 2
-
-    # calculat the intersect pixels between overlay region and profile
-    if angle >= 45 and angle <= 135:
-        # use colm to calculate row
-        colm_no = np.arange(colms)
-        if angle != 90:
-            tan_value = -1 * math.tan(angle * np.pi / 180)
-            row_no = np.ceil(((colm_no - colm_x) / tan_value) + row_y)
-        elif anlge == 90:
-            row_no = np.ceil(np.ones(colms) * row_y)
-    else:
-        # use row to calculate colm
-        row_no = np.arange(rows)
-        if angle != 0:
-            tan_value = -1 * math.tan(angle * np.pi / 180)
-            colm_no = np.ceil((row_no - row_y) * tan_value + colm_x)
-        elif anlge == 0:
-            colm_no = np.ceil(np.ones(rows) * colm_x)
-   
-    row_no = row_no.astype(dtype=np.int)
-    colm_no = colm_no.astype(dtype=np.int) 
-    m_profile = m_overlay[row_no, colm_no]    
-    s_profile = s_overlay[row_no, colm_no] 
-
-    # change zero value to np.nan
-    m_profile[(m_profile == 0)] = np.nan
-    s_profile[(s_profile == 0)] = np.nan
-
-    # calaculate lat/lon for profiles of two tracks
-    row_start = row_no[0]
-    row_end = row_no[-1]
-    colm_start = colm_no[0]
-    colm_end = colm_no[-1]
-    lat_start_m, lon_start_m = profile_latlon(row_start, colm_start, m_row0, m_colm0, m_atr)
-    lat_end_m, lon_end_m = profile_latlon(row_end, colm_end, m_row0, m_colm0, m_atr)
-    lat_start_s, lon_start_s = profile_latlon(row_start, colm_start, s_row0, s_colm0, s_atr)
-    lat_end_s, lon_end_s = profile_latlon(row_end, colm_end, s_row0, s_colm0, s_atr) 
-    
-    # save lat/lon files in gmt format
-    profile_write(lat_start_m, lon_start_m, lat_end_m, lon_end_m, m_name, outdir)
-    profile_write(lat_start_s, lon_start_s, lat_end_s, lon_end_s, s_name, outdir)
-
-    # plot two profiles
-    figure_size = [10,8]
-    fig,axes = plt.subplots(1,1,figsize = figure_size)
-    ax1 = axes
-    print('*****************************ploting profile************************')       
-    x_axis = np.arange(1,len(m_profile)+1)
-    ax1.plot(x_axis, m_profile, color='black', linestyle='-', label=m_name)
-    ax1.plot(x_axis, s_profile, color='blue', linestyle='-', label=s_name)
-
-    ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=True)
-    font1 = {'family' : 'serif',
-             'weight': 'normal',
-             'size' : 18.}
-    ax1.set_xlabel('Distance [km]',font1)
-    ax1.set_ylabel('LOS Displacement [cm]',font1)
-    labels = ax1.get_xticklabels() + ax1.get_yticklabels()
-    [label.set_fontname('serif') for label in labels]
-   
-    ax1.legend(loc='upper left', prop=font1)
-     
-    #save figure
-    fig_name = 'Profiles.png'
-    fig_output = outdir + fig_name
-    fig.savefig(fig_output, dpi=300, bbox_inches='tight')
-
 def rewrite_slave(inps,offset,s_atr,s_data):
 
     s_data_offset = s_data + offset
@@ -421,14 +319,47 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     mosaic_atr['Y_FIRST'] = mosaic_lat0
     
     if inps.plotpair:
-        # master and slave data name
-        m_name_tmp = os.path.split("".join(inps.master))[0]
-        s_name_tmp = os.path.split("".join(inps.slave))[0]
-        m_name= re.search('Sen([^/]+)/', m_name_tmp)[1]
-        s_name = re.search('Sen([^/]+)/', s_name_tmp)[1]
-        out_dir = inps.outdir[0]
-        angle = inps.azimuth
-        overlay_profile(angle, m_overlay, s_overlay, m_row0, m_colm0, s_row0, s_colm0, m_atr, s_atr, m_name, s_name, out_dir)
+        outdir = inps.outdir[0]
+        # calculate over_lat1 and over_lon1
+        over_lat1 = over_lat0 + (overlay_rows - 1) * mosaic_lat_step
+        over_lon1 = over_lon0 + (overlay_colms - 1) * mosaic_lon_step     
+        # calculate angle for the track
+        polygon = m_atr['scene_footprint']
+        lonlats = re.findall(r'([\d+\.]+)',polygon)
+        # lat/lon of the upper right point
+        lon_ur = float(lonlats[0])
+        lat_ur = float(lonlats[1])
+        # lat/lon of the lower right point
+        lon_lr = float(lonlats[2])
+        lat_lr = float(lonlats[3])
+        # azimuth angle for the track (clockwise from the North)
+        angle_rad = math.atan((lon_lr - lon_ur) / (lat_lr - lat_ur))
+        if inps.pro_num == 1:
+            point_lon = float(inps.LONLAT[0])
+            point_lat = float(inps.LONLAT[1])
+            
+            pro_obj = Profile(1, angle_rad, point_lon, point_lat, m_overlay, s_overlay, over_lat0, over_lon0, m_atr, s_atr, outdir)
+            pro_obj.profile_extract()
+            profiles.profile_plot(pro_obj.m_profile, pro_obj.s_profile, pro_obj.m_name, pro_obj.s_name, outdir)
+        else:
+            pro_catalog = profiles.search_profiles(inps.pro_num, over_lat0, over_lon0, over_lat1, over_lon1, m_atr, s_atr)         
+            profile_dict_list = []
+            for pro_NO in pro_catalog[:,0]:
+                profile_dict = dict()
+                pro_obj = Profile(int(pro_NO), angle_rad, pro_catalog[int(pro_NO)-1,1], pro_catalog[int(pro_NO)-1,2], m_overlay, s_overlay, over_lat0, over_lon0, m_atr, s_atr, outdir)        
+                pro_obj.profile_extract()
+                profile_dict['NO'] = int(pro_NO)
+                profile_dict['p_start'] = np.array([pro_obj.lon_start, pro_obj.lat_start])
+                profile_dict['p_end'] = np.array([pro_obj.lon_end, pro_obj.lat_end])
+                profile_dict['m_data'] = pro_obj.m_profile
+                profile_dict['s_data'] = pro_obj.s_profile
+                profile_dict_list.append(profile_dict)
+                m_name = pro_obj.m_name
+                s_name = pro_obj.s_name
+
+            # process multiprofiles
+            profile_dict_final = profiles.profile_average(inps.pro_num, profile_dict_list)
+            profiles.profiles_plot(profile_dict_final, m_name, s_name, outdir)             
 
     return mosaic_data, mosaic_atr
 
