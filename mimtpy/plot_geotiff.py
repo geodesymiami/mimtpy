@@ -240,7 +240,7 @@ def plot_geotiff(inps, site_infovel=None):
         x_component = list(site_infovel[:,5].astype(float))
         y_component = list(site_infovel[:,4].astype(float))
     
-        ax1.quiver(lon, lat, x_component, y_component, color='deepskyblue')
+        ax1.quiver(lon, lat, x_component, y_component, color='black')
 
     ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=True)
    
