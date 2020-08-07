@@ -56,6 +56,9 @@ def process_roi_pac(inps):
     disp = inps.file[0]
     print('processing displacement data {}'.format(disp))
     disp_data, atr = readfile.read(disp)
+    #displacement to phase
+    range2phase =  -4. * np.pi / float(atr['WAVELENGTH'])
+    disp_data *= range2phase 
     
     # calculate position of REF1/2/3/4
     
