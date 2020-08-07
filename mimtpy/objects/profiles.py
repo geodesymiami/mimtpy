@@ -196,17 +196,29 @@ def profiles_plot(profile_dict_final, m_name, s_name, outdir):
              'size' : 18.}
     ax1.set_xlabel('Distance [km]',font1)
     ax1.set_ylabel('LOS Displacement [cm]',font1)
+    
+    # set x label to km
+    lon_s = copy.deepcopy(profile_dict_final[0]['p_start'][0])
+    lat_s = copy.deepcopy(profile_dict_final[0]['p_start'][1])
+    lon_e = copy.deepcopy(profile_dict_final[0]['p_end'][0])
+    lat_e = copy.deepcopy(profile_dict_final[0]['p_end'][1])
+    distance = distance_2points(lon_s, lat_s, lon_e, lat_e)
+    xtick = np.linspace(0, int(np.ceil(distance)), num=10, endpoint=True)
+    
+    ax1.set_xticks(np.linspace(0, length, num=10, endpoint=True))
+    ax1.set_xticklabels([str(int(round(i))) for i in xtick])
+    
     labels = ax1.get_xticklabels() + ax1.get_yticklabels()
     [label.set_fontname('serif') for label in labels]
     
     ax1.legend(loc='upper left', prop=font1)
-     
+    
     #save figure
     fig_name = 'Profiles_' + m_name + '_' + s_name + '.png'
     fig_output = outdir + fig_name
     fig.savefig(fig_output, dpi=300, bbox_inches='tight')
 
-def profile_plot(m_profile, s_profile, m_name, s_name, outdir):
+def profile_plot(lon_s, lat_s, lon_e, lat_e, m_profile, s_profile, m_name, s_name, outdir):
 #def profile_plot(self, m_name, s_name):
     """plot master and slave data along one profile"""
     # plot two profiles
@@ -224,16 +236,40 @@ def profile_plot(m_profile, s_profile, m_name, s_name, outdir):
              'size' : 18.}
     ax1.set_xlabel('Distance [km]',font1)
     ax1.set_ylabel('LOS Displacement [cm]',font1)
+    
+    # set x label to km
+    distance = distance_2points(lon_s, lat_s, lon_e, lat_e)
+    xtick = np.linspace(0, int(np.ceil(distance)), num=10, endpoint=True)
+    ax1.set_xticks(np.linspace(0, len(m_profile), num=10, endpoint=True))
+    ax1.set_xticklabels([str(int(round(i))) for i in xtick])
+    
     labels = ax1.get_xticklabels() + ax1.get_yticklabels()
     [label.set_fontname('serif') for label in labels]
    
     ax1.legend(loc='upper left', prop=font1)
-     
+    
     #save figure
     fig_name = 'Profile_' + m_name + '_' + s_name + '.png'
     fig_output = outdir + fig_name
     fig.savefig(fig_output, dpi=300, bbox_inches='tight')
 
+def distance_2points(lon_s, lat_s, lon_e, lat_e):
+    """calculate distance[km] between two points based on their lat/lon"""
+    # the radius of earth
+    R = 6373.0
+    lon_s_rad = math.radians(lon_s)
+    lat_s_rad = math.radians(lat_s)
+    lon_e_rad = math.radians(lon_e)
+    lat_e_rad = math.radians(lat_e)
+
+    dlon = lon_e_rad - lon_s_rad
+    dlat = lat_e_rad - lat_s_rad
+
+    a = math.sin(dlat / 2)**2 + math.cos(lat_s_rad) * math.cos(lat_e_rad) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    distance = R * c
+    return distance
 ###################################### Beginning of CGPS class #################################### 
 class Profile:
     """Profile class for profiles
