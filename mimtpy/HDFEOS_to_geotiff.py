@@ -61,7 +61,7 @@ def located_dataset_based_attribut(inps):
     attr = "".join(inps.attribute)
     geometry_attr = ['azimuthAngle','height','incidenceAngle','latitude','longitude','shadowMask','slantRangeDistance']
     observation_attr = ['bperp','date','displacement','velocity']
-    quality_attr = ['mask','temporalCoherence']
+    quality_attr = ['mask','temporalCoherence','avgSpatialCoherence']
     
     #define the dataset
     if attr in geometry_attr:
