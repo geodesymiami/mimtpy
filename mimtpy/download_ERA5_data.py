@@ -11,11 +11,13 @@ import numpy as np
 
 import mintpy
 from mintpy import tropo_pyaps3
+from mintpy.utils import readfile
 ######################################################################################
 EXAMPLE = """example:
   
-  download_ERA5_data.py -d SAFE_file.txt -b 36.63 41.05 -3.45 0.5 -o $WEATHER_DIR
-  
+  download_ERA5_data.py -d SAFE_files.txt -b 36.63 41.05 -3.45 0.5 -w $WEATHER_DIR
+  download_ERA5_data.py -d SAFE_files.txt -t $TE/KashgarSenDT107.template -w $WEATHER_DIR  
+
 """
 SAFE_FILE = """SAFE_files.txt:
     /data/SanAndreasSenDT42/SLC/S1B_IW_SLC__1SDV_20191117T140737_20191117T140804_018968_023C8C_82DC.zip
@@ -24,17 +26,20 @@ SAFE_FILE = """SAFE_files.txt:
 """
 
 Statement = """statement:
-Some function of this script is copied from MintPy tropo_pyaps3.py script!
+Some function of this script is modified based on MintPy tropo_pyaps3.py script!
 """
 
 def create_parser():
-    parser = argparse.ArgumentParser(description='Prepare data for Kite software',
+    parser = argparse.ArgumentParser(description='Download ERA5 data',
                                      formatter_class=argparse.RawTextHelpFormatter,
-                                     epilog=EXAMPLE)
+                                     epilog=EXAMPLE+'\n'+Statement)
 
     parser.add_argument('-d', '--date_list', dest='date_list', nargs=1, type=str, 
                         help='a text file with Sentinel-1 SAFE filenames\ne.g.:SAFE_FILE')
 
+    parser.add_argument('-t', '--template_file', dest='template_file', nargs=1, type=str,
+                        help='the template file which contains topsStack.ERA5_boundingBox parameter.')
+ 
     parser.add_argument('-b', '--bbox', dest='SNWE', type=float, nargs=4, metavar=('S', 'N','W','E'),
                         help='Bounding box of interesting area\n'+
                         'Include the uppler left corner of the area' + 
@@ -80,6 +85,8 @@ def get_grib_info(inps):
     # area extent for ERA5 grib data download
     if inps.SNWE:
         inps.snwe = get_snwe(inps)
+    elif inps.template_file:
+        inps.snwe = get_snwe(inps)
     else:
         raise Exception('No defined bounding box. Please define your bounding box')
 
@@ -94,10 +101,19 @@ def get_grib_info(inps):
 
 def get_snwe(inps, min_buffer=2, step=10):
     # get bounding box
-    lat0 = float(inps.SNWE[1])
-    lon0 = float(inps.SNWE[2])
-    lat1 = float(inps.SNWE[0])
-    lon1 = float(inps.SNWE[3])
+
+    if inps.SNWE:
+        lat0 = float(inps.SNWE[1])
+        lon0 = float(inps.SNWE[2])
+        lat1 = float(inps.SNWE[0])
+        lon1 = float(inps.SNWE[3])
+    elif inps.template_file:
+        geometry = readfile.read_template(inps.template_file[0]) 
+        SNWE = geometry['topsStack.ERA5_boundingBox'].split(' ')
+        lat0 = float(SNWE[0])
+        lat1 = float(SNWE[1])
+        lon0 = float(SNWE[2])
+        lon1 = float(SNWE[3])
     
     # lat/lon0/1 --> SNWE
     S = np.floor(min(lat0, lat1) - min_buffer).astype(int)
