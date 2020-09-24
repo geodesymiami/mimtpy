@@ -103,17 +103,18 @@ def get_snwe(inps, min_buffer=2, step=10):
     # get bounding box
 
     if inps.SNWE:
-        lat0 = float(inps.SNWE[1])
-        lon0 = float(inps.SNWE[2])
-        lat1 = float(inps.SNWE[0])
-        lon1 = float(inps.SNWE[3])
-    elif inps.template_file:
-        geometry = readfile.read_template(inps.template_file[0]) 
-        SNWE = geometry['topsStack.ERA5_boundingBox'].split(' ')
-        lat0 = float(SNWE[0])
-        lat1 = float(SNWE[1])
-        lon0 = float(SNWE[2])
-        lon1 = float(SNWE[3])
+        SNWE = inps.SNWE
+    else:
+        custom_template = readfile.read_template(inps.template_file[0]) 
+        if ('weather.boundingBox' in custom_template):
+            SNWE = custom_template['weather.boundingBox'].split(' ')
+        else:
+            SNWE = custom_template['topsStack.boundingBox'].split(' ')
+
+    lat0 = float(SNWE[0])
+    lat1 = float(SNWE[1])
+    lon0 = float(SNWE[2])
+    lon1 = float(SNWE[3])
     
     # lat/lon0/1 --> SNWE
     S = np.floor(min(lat0, lat1) - min_buffer).astype(int)
