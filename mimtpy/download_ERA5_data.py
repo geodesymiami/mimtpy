@@ -45,7 +45,7 @@ def create_parser():
                         'Include the uppler left corner of the area' + 
                         'and the lower right corner of the area')
     
-    parser.add_argument('-w','--weather_dir',dest='weather_dir',default='${WEATHER_DIR}',
+    parser.add_argument('-w','--weather_dir',dest='weather_dir',default=os.getenv('WEATHER_DIR'),
                        help='parent directory of downloaded weather data file (default: %(default)s)')
     
     return parser
@@ -53,7 +53,7 @@ def create_parser():
 def cmd_line_parse(iargs=None):
     parser = create_parser()
     inps = parser.parse_args(args=iargs)  
-    
+   
     return inps
 
 def get_date_list(inps):
