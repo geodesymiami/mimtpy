@@ -16,7 +16,7 @@ from mintpy.utils import readfile
 EXAMPLE = """example:
   
   download_ERA5_data.py -d SAFE_files.txt -b 36.63 41.05 -3.45 0.5 -w $WEATHER_DIR
-  download_ERA5_data.py -d SAFE_files.txt -t $TE/KashgarSenDT107.template -w $WEATHER_DIR  
+  download_ERA5_data.py $TE/KashgarSenDT107.template -d SAFE_files.txt -w $WEATHER_DIR  
 
 """
 SAFE_FILE = """SAFE_files.txt:
@@ -33,13 +33,13 @@ def create_parser():
     parser = argparse.ArgumentParser(description='Download ERA5 data',
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog=EXAMPLE+'\n'+Statement)
+    
+    parser.add_argument('template_file', nargs='?', type=str,
+                        help='the template file which contains topsStack.boundingBox or weather.boundingBox parameter.')
 
     parser.add_argument('-d', '--date_list', dest='date_list', nargs=1, type=str, 
                         help='a text file with Sentinel-1 SAFE filenames\ne.g.:SAFE_FILE')
 
-    parser.add_argument('-t', '--template_file', dest='template_file', nargs=1, type=str,
-                        help='the template file which contains topsStack.ERA5_boundingBox parameter.')
- 
     parser.add_argument('-b', '--bbox', dest='SNWE', type=float, nargs=4, metavar=('S', 'N','W','E'),
                         help='Bounding box of interesting area\n'+
                         'Include the uppler left corner of the area' + 
@@ -105,7 +105,7 @@ def get_snwe(inps, min_buffer=2, step=10):
     if inps.SNWE:
         SNWE = inps.SNWE
     else:
-        custom_template = readfile.read_template(inps.template_file[0]) 
+        custom_template = readfile.read_template(inps.template_file) 
         if ('weather.boundingBox' in custom_template):
             SNWE = custom_template['weather.boundingBox'].split(' ')
         else:
