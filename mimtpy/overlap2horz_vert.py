@@ -26,7 +26,7 @@ Reference paper:
 [2] Wright, T. J., B. E. Parsons, and Z. Lu (2004), Toward mapping surface deformation in three dimensions using InSAR, Geophys. Res. Lett., 31, L01607, doi:10.1029/2003GL018827.
 
 Note:
-Horizonatl component: Positive means east; Negative means west
+Horizonatl component: Negative means west; Positive means east
 Vertical component: Positive means up; Negative means down
 """
 
@@ -54,6 +54,25 @@ def cmd_line_parse(iargs=None):
     parser = create_parser()
     inps = parser.parse_args(args=iargs)  
     
+    m_atr = readfile.read_attribute(inps.master[0])
+    s_atr = readfile.read_attribute(inps.slave[0])
+
+    # check coordinates
+    if any ('X_FIRST' not in i for i in [m_atr, s_atr]):
+        raise Exception('Not all input files are geocoded!')
+
+    # check spatial resolution
+    if any (m_atr[i] != s_atr[i] for i in ['X_STEP', 'Y_STEP']):
+        raise Exception('input files do not have the same spatial resolution')
+
+    # check reference point
+    # round to 3 decimal digits (~100m)
+    ref_lalo_m = ['{:.1f}'.format(float(m_atr[i])) for i in ['REF_LAT', 'REF_LON']]
+    ref_lalo_s = ['{:.1f}'.format(float(s_atr[i])) for i in ['REF_LAT', 'REF_LON']]
+
+    #if ref_lalo_m != ref_lalo_s:
+    #    raise Exception('input fils do not have the same reference point from REF_LAT/REF_LON value')
+
     return inps
 
 def A_design(m_inc,s_inc):
@@ -65,6 +84,8 @@ def A_design(m_inc,s_inc):
     A_vert_numerator = np.sin(m_inc) / np.sin(s_inc)
 
     return A_horz_denominator, A_horz_numerator, A_vert_denominator, A_vert_numerator
+
+    
 
 def latlon_overlay(m_atr, s_atr):
     """get lat/lon range of overlapping area
