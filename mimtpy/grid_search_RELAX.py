@@ -210,7 +210,7 @@ def main(iargs=None):
     obser_did = obser_data[:,2]
     
     # read one of simulation data
-    sim_example = "".join(inps.mdata) + '/' + 'vs_17001700.json'
+    sim_example = "".join(inps.mdata) + '/' + 'vs_10001700.json'
     sim_example_data = read_files(sim_example)
     sim_example_north = sim_example_data[:,2]
     NotNan_sim = ~np.isnan(sim_example_north)
