@@ -13,7 +13,8 @@ from mintpy.utils import readfile
 ######################################################################################
 EXAMPLE = """example:
   
-  generate_track_polygon.py S1***.he5 --output BogdSenDT4.gmt --outdir ./
+  generate_track_polygon.py S1***.he5 --option scfoot --output BogdSenDT4.gmt --outdir ./
+  generate_track_polygon.py S1***.he5 --option cbox --output BogdSenDT4.gmt --outdir ./
   
 """
 
@@ -23,6 +24,9 @@ def create_parser():
                                      epilog=EXAMPLE)
 
     parser.add_argument('file', nargs=1, type=str, help='HDFEOS file for the project\n')
+
+    parser.add_argument('--option', nargs=1, type=str, help='two options: generate screen_footprint or coverage box'
+                                                            'sfoot: screen_footprint; cbox: coverage box')
 
     parser.add_argument('--output', dest='output', type=str, nargs=1,
                         help='output file name')
@@ -38,7 +42,7 @@ def cmd_line_parse(iargs=None):
     
     return inps
 
-def generate_polygon(inps):
+def generate_polygon_sfoot(inps):
     """generate polygon for track using gmt formate"""
     file_name = inps.file[0]
   
@@ -61,7 +65,10 @@ def generate_polygon(inps):
     lon_ul = float(lonlats[6])
     lat_ul = float(lonlats[7])
     
-    # write gmt file
+    return lon_ur, lat_ur, lon_lr, lat_lr, lon_ll, lat_ll, lon_ul, lat_ul
+    
+def write_gmt(lon_ur, lat_ur, lon_lr, lat_lr, lon_ll, lat_ll, lon_ul, lat_ul, inps): 
+    '''write gmt file'''
     gmt_file = inps.outdir[0] + '/' + inps.output[0]
     
     f = open(gmt_file, mode='w')
@@ -82,11 +89,57 @@ def generate_polygon(inps):
     f.writelines([str(lon_ur), ' ', str(lat_ur), '\n'])
     f.close() 
 
+def generate_polygon_cbox(inps):
+    """generate covarage box
+    lat0,lon0- starting latitude/longitude (first row/column)
+    lat1,lon1- ending latitude/longitude (last row/column)
+    """
+    file_name = inps.file[0] 
+    atr = readfile.read(file_name)[1]
+    length,width = int(atr['LENGTH']),int(atr['WIDTH'])
+    
+    if 'Y_FIRST' in atr.keys():
+        # geo coordinates
+        lat0 = float(atr['Y_FIRST'])
+        lon0 = float(atr['X_FIRST'])
+        lat_step = float(atr['Y_STEP'])
+        lon_step = float(atr['X_STEP'])
+        lat1 = lat0 + (length - 1) * lat_step
+        lon1 = lon0 + (width - 1) * lon_step
+    else:
+        # radar coordinates
+        lats = [float(atr['LAT_REF{}'.format(i)]) for i in [1,2,3,4]]
+        lons = [float(atr['LON_REF{}'.format(i)]) for i in [1,2,3,4]]
+        lat0 = np.mean(lats[0:2])
+        lat1 = np.mean(lats[2:4])
+        lon0 = np.mean(lons[0:3:2])
+        lon1 = np.mean(lons[1:4:2])
+    
+    # lon/lat of four points: upperright; lowerright; lowerleft; upperleft 
+    lon_ur = lon1
+    lat_ur = lat0
+ 
+    lon_lr = lon1
+    lat_lr = lat1
+ 
+    lon_ll = lon0
+    lat_ll = lat1
+
+    lon_ul = lon0
+    lat_ul = lat0
+
+    return lon_ur, lat_ur, lon_lr, lat_lr, lon_ll, lat_ll, lon_ul, lat_ul
 ######################################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
     
-    generate_polygon(inps)
+    option = inps.option
+    if option == 'sfoot':
+        lon_ur, lat_ur, lon_lr, lat_lr, lon_ll, lat_ll, lon_ul, lat_ul = generate_polygon_sfoot(inps)
+    else:
+        lon_ur, lat_ur, lon_lr, lat_lr, lon_ll, lat_ll, lon_ul, lat_ul = generate_polygon_cbox(inps)
+
+    write_gmt(lon_ur, lat_ur, lon_lr, lat_lr, lon_ll, lat_ll, lon_ul, lat_ul, inps)
 ######################################################################################
 if __name__ == '__main__':
     main()
