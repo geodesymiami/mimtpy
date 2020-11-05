@@ -9,15 +9,27 @@ import os
 import argparse
 import numpy as np
 import copy
+import h5py
 
 import mintpy
 from mintpy.utils import readfile, writefile, utils as ut
 from mimtpy.utils import multitrack_utilities as mut
 ######################################################################################
 EXAMPLE = """example:
-  
-  save_kite.py geo_mask.h5 --lls1 43.6 99.7 46.3 100.5 --lls2 43.7 100.9 46.4 101.7 -g ./inputs/geometryRadar.h5 --tramp 1e-08 1e-08 --tiramp 1e-07 1e-07 5e-07 5e-07 8e-07 8e-07 -o BogdSenDT106_synthetic_linearramp
-  
+    
+    synthetic_S1.py mask.h5 BogdModelData_33.h5 --ramp --subswath --lls1 43.60 101.86 46.38 102.47 --lls2 43.53 102.94 46.47 103.67 --tramp 1e-06 1e-06 0.003 --tiramp 4e-07 4e-07 0.002 6e-07 6e-07 0.005 8e-07 8e-07 0.008 --wrap --outdir ./4ramps/
+
+   synthetic_S1.py mask.h5 BogdModelData_106.h5 --ramp --subswath --lls1 43.56 99.80 46.34 100.42 --lls2 43.65 100.91 46.42 101.59 --tramp 3e-07 3e-07 0.002 --tiramp 1e-07 1e-07 0.001 3e-07 3e-07 0.004 6e-07 6e-07 0.008--wrap --outdir ./4ramps/
+
+    synthetic_S1.py mask.h5 BogdModelData_4.h5 --ramp --subswath --lls1 43.62 97.77 46.38 98.37 --lls2 43.54 98.85 46.48 99.57 --tramp 3e-08 3e-08 0.001 --tiramp 1e-08 1e-08 0.001 2e-08 2e-08 0.001 5e-08 5e-08 0.001 --wrap --outdir ./4ramps/
+
+    synthetic_S1.py mask.h5 KokoxiliModelData_AT143.h5 --ramp KokoxiliTramp_AT143.h5 --subswath --lls1 43.62 97.77 46.38 98.37 --lls2 43.54 98.85 46.48 99.57 --tramp 3e-08 3e-08 --tiramp 1e-08 1e-08 2e-08 2e-08 5e-08 5e-08 --outdir ./4ramps/ 
+    
+    synthetic_S1.py mask.h5 --ramp --subswath --lls1 43.62 97.77 46.38 98.37 --lls2 43.54 98.85 46.48 99.57 --tramp 3e-08 3e-08 --tiramp 1e-08 1e-08 2e-08 2e-08 5e-08 5e-08 --outdir ./4ramps/ 
+
+    synthetic_S1.py mask.h5 KokoxiliModelData_AT143.h5 --outdir ./
+    
+    synthetic_S1.py mask.h5 KokoxiliModelData_AT143.h5 --ramp --tramp 1e-06 1e-06 0.003 --tiramp_whole 1e-07 1e-08 0.001--outdir ./
 """
 
 def create_parser():
@@ -27,23 +39,36 @@ def create_parser():
 
     parser.add_argument('file', nargs=1, type=str, help='geocoded mask file\n')
 
+    parser.add_argument('modelfile', nargs='?', type=str, help='coseismic model field.')
+
+    parser.add_argument('--ramp', action='store_true', default=False, help='whether simulate tectonic and atmospheric ramp')
+
+    parser.add_argument('trampfile', nargs='?', type=str, help='tectonic ramp file.')
+
+    parser.add_argument('--tramp', dest='tramp', type=float, nargs=3, metavar=('txramp','tyramp','toffset'),
+                         help='tectonic linear ramp in X direction and Y direction.')
+   
+    parser.add_argument('--tiramp_whole', dest='tiramp_whole', type=float, nargs=3, metavar=('tixramp','tiyramp','tioffset'),
+                         help='troposphere and ionosphere linear ramp in X direction and Y direction.')
+ 
+    parser.add_argument('--subswath', action='store_true', default=False, help='whether simulate troposphere/ionosphere ramp for each subswath')
+    
     parser.add_argument('--lls1', dest='latlons1', type=float, nargs=4, metavar=('LowLat', 'LowLon', 'HighLat', 'HighLon'),
                         help='lat and lon for the two points located at the intersect corner of swath 1 and swath 2.')
     
     parser.add_argument('--lls2', dest='latlons2', type=float, nargs=4, metavar=('LowLat', 'LowLon', 'HighLat', 'HighLon'),
                         help='lat and lon for the two points located at the intersect corner of swath 2 and swath 3.')
 
-    parser.add_argument('-g', '--geometryRadar', dest='geometry', type=str, nargs=1,
-                        help='geometry file')
+    #parser.add_argument('-g', '--geometryRadar', dest='geometry', type=str, nargs=1,
+    #                    help='geometry file')
     
-    parser.add_argument('--tramp', dest='tramp', type=float, nargs=2, metavar=('txramp','tyramp'),
-                         help='tectonic linear ramp in X direction and Y direction.')
-
-    parser.add_argument('--tiramp', dest='tiramp', type=float, nargs=6, metavar=('s1xramp', 's1yramp', 's2xramp', 's2yramp', 's3xramp', 's3yramp'),
+    parser.add_argument('--tiramp', dest='tiramp', type=float, nargs=9, metavar=('s1xramp', 's1yramp', 's1offset', 's2xramp', 's2yramp', 's2offset', 's3xramp', 's3yramp', 's3offset'),
                          help='residual troposphere / ionosphere linear ramp for swath1, swath2 and swath3 in X and Y direction.')
 
-    parser.add_argument('-o','--outfile',dest='outfile',nargs=1, type=str,
-                        help='outfile name')
+    parser.add_argument('--wrap', action='store_true', default=False, help='whether wrap the synthetic data.\n')
+
+    #parser.add_argument('-o','--outfile',dest='outfile',nargs=1, type=str,
+    #                    help='outfile name')
     parser.add_argument('--outdir', nargs=1, type=str, help='output dir')    
 
     return parser
@@ -60,9 +85,9 @@ def ll2xy(inps):
 
     # read geometry
     inps.lat, inps.lon = ut.get_lat_lon(inps.metadata)
-    inps.inc_angle = readfile.read(inps.geometry[0], datasetName='incidenceAngle')[0]
-    inps.head_angle = np.ones(inps.inc_angle.shape, dtype=np.float32) * float(inps.metadata['HEADING'])
-    inps.height = readfile.read(inps.geometry[0], datasetName='height')[0]
+    #inps.inc_angle = readfile.read(inps.geometry[0], datasetName='incidenceAngle')[0]
+    #inps.head_angle = np.ones(inps.inc_angle.shape, dtype=np.float32) * float(inps.metadata['HEADING'])
+    #inps.height = readfile.read(inps.geometry[0], datasetName='height')[0]
 
     # read mask file
     inps.mask = readfile.read(inps.file[0])[0]
@@ -122,7 +147,7 @@ def generate_swaths_mask(inps, original_mask, X, Y, origin):
     HighY_s2 = s2_XY[1,1]
 
     # generate the indicator to judge swath1 swath2 swath3
-    row, colm = original_mask.shape
+    row, colm =  original_mask.shape
     mask_s123 = np.zeros((row, colm), dtype=int) * np.nan
     mask_s123_tmp = mask_s123.reshape(-1,1)
   
@@ -147,67 +172,164 @@ def generate_swaths_mask(inps, original_mask, X, Y, origin):
 
     return mask_swaths
 
+def read_model_h5(files):
+    """read h5 file generated by matlab"""
+    model_file = files
+    model_idx = h5py.File(model_file,'r')
+    data = model_idx['/model'][()]
+    model_data = np.transpose(data)
+
+    return model_data
+
 def generate_linear_ramp(mask_swaths, X, Y, inps):
     """generate linear ramp for the synthetic data"""
     # ramp data
-    row, colm = mask_swaths.shape
-    data_ramp = np.zeros((row, colm), dtype=float)
+    inps.row, inps.colm = mask_swaths.shape
+    data_ramp = np.zeros((inps.row, inps.colm), dtype=float)
     data_ramp = data_ramp.reshape(-1,1)
     
     # flatten mask_swaths
     mask_swaths_flat = mask_swaths.reshape(-1,1)
      
     # for tectonic linear ramp
-    txramp = float(inps.tramp[0])
-    tyramp = float(inps.tramp[1])
-  
-    # calculate tectonic linear ramp
-    data_tramp = (X * (mask_swaths_flat != 0)) * txramp + (Y * (mask_swaths_flat != 0)) * tyramp
+    if inps.trampfile:
+        data_tramp = read_model_h5(inps.trampfile)
+        data_tramp = data_tramp.reshape(-1, 1)
+    else:
+        txramp = float(inps.tramp[0])
+        tyramp = float(inps.tramp[1])
+        toffset = float(inps.tramp[2]) 
+ 
+        # calculate tectonic linear ramp
+        data_tramp = (X * (mask_swaths_flat != 0)) * txramp + (Y * (mask_swaths_flat != 0)) * tyramp + toffset
     
     data_ramp += data_tramp
 
     # for residual troposphere / ionosphere linear ramp
-    s1xramp = float(inps.tiramp[0])
-    s1yramp = float(inps.tiramp[1])
-    s2xramp = float(inps.tiramp[2])
-    s2yramp = float(inps.tiramp[3])
-    s3xramp = float(inps.tiramp[4])
-    s3yramp = float(inps.tiramp[5])
+    if inps.subswath:
+        s1xramp = float(inps.tiramp[0])
+        s1yramp = float(inps.tiramp[1])
+        s1offset = float(inps.tiramp[2])
+        s2xramp = float(inps.tiramp[3])
+        s2yramp = float(inps.tiramp[4])
+        s2offset = float(inps.tiramp[5])
+        s3xramp = float(inps.tiramp[6])
+        s3yramp = float(inps.tiramp[7])
+        s3offset = float(inps.tiramp[8])
 
-    # calculate residual troposphere / ionosphere linear ramp for swath 1/2/3
-    data_tiramp = np.zeros((row, colm), dtype=float).reshape(-1,1)
+        # calculate residual troposphere / ionosphere linear ramp for subswath 1/2/3
+        data_tiramp = np.zeros((inps.row, inps.colm), dtype=float).reshape(-1,1)
 
-    data_tiramp += ((X * (mask_swaths_flat == 1)) * s1xramp + (Y * (mask_swaths_flat == 1)) * s1yramp)
-    data_tiramp += ((X * (mask_swaths_flat == 2)) * s2xramp + (Y * (mask_swaths_flat == 2)) * s2yramp)
-    data_tiramp += ((X * (mask_swaths_flat == 3)) * s3xramp + (Y * (mask_swaths_flat == 3)) * s3yramp)
+        data_tiramp += ((X * (mask_swaths_flat == 1)) * s1xramp + (Y * (mask_swaths_flat == 1)) * s1yramp + s1offset)
+        data_tiramp += ((X * (mask_swaths_flat == 2)) * s2xramp + (Y * (mask_swaths_flat == 2)) * s2yramp + s2offset)
+        data_tiramp += ((X * (mask_swaths_flat == 3)) * s3xramp + (Y * (mask_swaths_flat == 3)) * s3yramp + s3offset)
 
+    else:
+        tixramp = float(inps.tiramp_whole[0])
+        tiyramp = float(inps.tiramp_whole[1])
+        tioffset = float(inps.tiramp_whole[2]) 
+ 
+        # calculate tectonic linear ramp
+        data_tiramp = (X * (mask_swaths_flat != 0)) * tixramp + (Y * (mask_swaths_flat != 0)) * tiyramp + tioffset
+        
     data_ramp += data_tiramp
 
+    # calculated the synthetic model data + ramp
+    if inps.modelfile:
+        inps.model_data = read_model_h5(inps.modelfile)
+        model_data_copy = copy.deepcopy(inps.model_data)
+        write_model_data(model_data_copy, inps)
+        row_model, colm_model = inps.model_data.shape
+        if row_model != inps.row or colm_model != inps.colm:
+            raise Exception('Error! The dimension of modeled data and simulated ramp is disagree!')
+        inps.model_data = inps.model_data.reshape(-1,1)
+        inps.model_data += data_ramp
+ 
     # wrapped
-    vmin = -float(inps.metadata['WAVELENGTH']) / 4
-    vmax = float(inps.metadata['WAVELENGTH']) / 4
-    data_ramp = vmin + np.mod(data_ramp - vmin, vmax - vmin)
-    data_tramp = vmin + np.mod(data_tramp - vmin, vmax - vmin)
-    data_tiramp = vmin + np.mod(data_tiramp - vmin, vmax - vmin)
+    if inps.wrap:
+        vmin = -float(inps.metadata['WAVELENGTH']) / 4
+        vmax = float(inps.metadata['WAVELENGTH']) / 4
+        data_ramp_wrap = vmin + np.mod(data_ramp - vmin, vmax - vmin)
+        data_tramp_wrap = vmin + np.mod(data_tramp - vmin, vmax - vmin)
+        data_tiramp_wrap = vmin + np.mod(data_tiramp - vmin, vmax - vmin)
+        if inps.modelfile:
+            inps.model_data_wrap = vmin + np.mod(inps.model_data - vmin, vmax - vmin)
+            write_data(inps, data_tramp_wrap, data_tiramp_wrap, data_ramp_wrap, model_data_ramp='yes', wrap_flag='yes')
+        else:
+            write_data(inps, data_tramp_wrap, data_tiramp_wrap, data_ramp_wrap, wrap_flag='yes')       
+
+    # range to phase 
     #data_ramp = (data_ramp / float(inps.metadata['WAVELENGTH'])) * (4 * np.pi)
     #data_tramp = (data_tramp / float(inps.metadata['WAVELENGTH'])) * (4 * np.pi)
     #data_tiramp = (data_tiramp / float(inps.metadata['WAVELENGTH'])) * (4 * np.pi)
-    
+    if inps.modelfile:
+        write_data(inps, data_tramp, data_tiramp, data_ramp, model_data_ramp='yes')
+    else:
+        write_data(inps, data_tramp, data_tiramp, data_ramp)   
+
+    return 
+
+def write_data(inps, data_tramp, data_tiramp, data_ramp, model_data_ramp=None, wrap_flag=None):
+    """write data"""
     # write ramp and ramped data
-    inps.metadata['UNIT'] = '.unw'
-    inps.metadata['FILE_TYPE'] = 'unw'
-    data_tramp = data_tramp.reshape(row, colm)
-    data_tiramp = data_tiramp.reshape(row, colm)
-    data_ramp = data_ramp.reshape(row, colm)
-    
-    # change 0 to np.nan
+    inps.metadata['UNIT'] = 'm'
+    if wrap_flag:
+        inps.metadata['FILE_TYPE'] = 'wrap'
+    else:
+        inps.metadata['FILE_TYPE'] = '.unw'
+ 
+    data_tramp = data_tramp.reshape(inps.row, inps.colm)
+    data_tiramp = data_tiramp.reshape(inps.row, inps.colm)
+    data_ramp = data_ramp.reshape(inps.row, inps.colm)
+    if model_data_ramp:
+        if wrap_flag:
+            inps.model_data_wrap = inps.model_data_wrap.reshape(inps.row, inps.colm)
+        else:
+            inps.model_data = inps.model_data.reshape(inps.row, inps.colm)
+
+    # mask data
     data_ramp[inps.mask == False] = np.nan
     data_tramp[inps.mask == False] = np.nan
     data_tiramp[inps.mask == False] = np.nan
-    
-    writefile.write(data_tramp, out_file=inps.outdir[0] + 'tectonic_ramp.h5', metadata=inps.metadata)
-    writefile.write(data_tiramp, out_file=inps.outdir[0] + 'troposphere_ionosphere_ramp.h5', metadata=inps.metadata)
-    writefile.write(data_ramp, out_file=inps.outdir[0] + 'data_ramped.h5', metadata=inps.metadata)
+    if model_data_ramp:
+        if wrap_flag:
+            inps.model_data_wrap[inps.mask == False] = np.nan
+        else:
+            inps.model_data[inps.mask == False] = np.nan
+
+    if wrap_flag:
+        tramp_name = inps.outdir[0] + 'tectonic_ramp_wrap.h5'
+        tiramp_name = inps.outdir[0] + 'troposphere_ionosphere_ramp_wrap.h5'
+        ramp_name = inps.outdir[0] + 'data_ramped_wrap.h5'
+        if model_data_ramp:
+            model_ramp_name = inps.outdir[0] + inps.modelfile.split('.')[0] + '_ramped_wrap.h5' 
+    else:
+        tramp_name = inps.outdir[0] + 'tectonic_ramp.h5'
+        tiramp_name = inps.outdir[0] + 'troposphere_ionosphere_ramp.h5'
+        ramp_name = inps.outdir[0] + 'data_ramped.h5'
+        if model_data_ramp:
+            model_ramp_name = inps.outdir[0] + inps.modelfile.split('.')[0] + '_ramped.h5' 
+        
+    writefile.write(data_tramp, out_file=tramp_name, metadata=inps.metadata)
+    writefile.write(data_tiramp, out_file=tiramp_name, metadata=inps.metadata)
+    writefile.write(data_ramp, out_file=ramp_name, metadata=inps.metadata)
+    if model_data_ramp:
+        if wrap_flag:
+            writefile.write(inps.model_data_wrap, out_file=model_ramp_name, metadata=inps.metadata)
+        else:
+            writefile.write(inps.model_data, out_file=model_ramp_name, metadata=inps.metadata)
+
+def write_model_data(model_data_copy, inps):
+    """change simulated model data to mintpy format"""
+    model_data_copy[inps.mask == False] = np.nan
+    outfile = inps.outdir[0] + inps.modelfile.split('.')[0] + '_mintpy.h5'
+    writefile.write(model_data_copy, out_file=outfile, metadata=inps.metadata)
+    # wrap 
+    vmin = -float(inps.metadata['WAVELENGTH']) / 4
+    vmax = float(inps.metadata['WAVELENGTH']) / 4
+    model_data_copy_wrap = vmin + np.mod(model_data_copy - vmin, vmax - vmin)
+    outfile = inps.outdir[0] + inps.modelfile.split('.')[0] + '_mintpy_wrap.h5'
+    writefile.write(model_data_copy_wrap, out_file=outfile, metadata=inps.metadata)
 ######################################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
@@ -216,8 +338,23 @@ def main(iargs=None):
     original_mask = readfile.read(inps.file[0])[0]
     X = np.transpose(np.array([X]))
     Y = np.transpose(np.array([Y]))
-    mask_swaths = generate_swaths_mask(inps, original_mask, X, Y, origin)
-    generate_linear_ramp(mask_swaths, X, Y, inps)
+    
+    if inps.ramp:
+        # generate model data/ramp data/model+ramp data
+        if inps.tiramp_whole:
+            row, colm =  original_mask.shape
+            mask_swaths = np.ones((row, colm), dtype=float)
+            mask_swaths[inps.mask == False] = np.nan
+        else:
+            mask_swaths = generate_swaths_mask(inps, original_mask, X, Y, origin)
+    
+        generate_linear_ramp(mask_swaths, X, Y, inps)
+    else:
+        # only generate model data
+        if inps.modelfile:
+            model_data = read_model_h5(inps.modelfile)
+            model_data_copy = copy.deepcopy(model_data)
+            write_model_data(model_data_copy, inps)
 ######################################################################################
 if __name__ == '__main__':
     main()
