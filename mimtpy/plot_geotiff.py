@@ -12,6 +12,7 @@ import rasterio.plot
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import geopandas
 import numpy as np
 
@@ -36,18 +37,25 @@ EXAMPLE = """example:
     
     plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
    
+    # plot data using nonlinear colorbar
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor b r --fstyle s d --refpoi refpoi_DT.shp --nonlinear --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    
+
     # plot shape file and gps velocity vector field
     # plot single gps site with extracting incidence and heading angle from geometreRadar 
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type NGPS --gps_name GV05 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type NGPS --gps_name GV05 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --scale 1 --scale_key 0.01 --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
     
     # plot single gps site using typical incidence and heading angle for Seitinel1
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type CGPS --gps_name AHAQ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type CGPS --gps_name AHAQ --scale 1 --scale_key 0.01 --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
     
     # plot multiple gps sites with extracting incidence and heading angle from geometreRadar 
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type NGPS --search --bbox 36 40 36 39 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type NGPS --search --bbox 36 40 36 39 --geometry $SCRATCHDIR/BalochistanSenAT115/mintpy/inputs/geometryRadar.h5 --gpsdir /data/lxr/insarlab/GPS/ --scale 1 --scale_key 0.01 --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
     
     # plot multiple gps sites with extracting incidence and heading angle from geometreRadar 
-    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type CGPS --search --bbox 30 35 101 106  --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+    plot_geotiff.py geotiff_file --shpdir /data/lxrtest/Balochistan/shp/ --fault multifault.shp nearbyfault.shp --fcolor o m --fstyle s s --refpoi refpoi_DT.shp --gps_putton --type CGPS --search --bbox 30 35 101 106 --scale 1 --scale_key 0.01 --vlim -0.02 0.02 --outfile velocity --outdir /data/lxrtest/BalochistanSenAT/shp/ 
+
+    # plot GPS data alone
+    plot_geotiff.py velocity_201504_202010.tiff --gps_putton --type NGPS --search --bbox 37 43 -121 -115 --gpsdir /data/lxr/insarlab/GPS/ --scale 1 --scale_key 0.01 --vlim -0.02 0.02 --outfile velocity3 --outdir ./
 """
 
 fcolor_table = {'b':'black','r':'red','y':'yellow','o':'orange','m':'magenta'}
@@ -71,7 +79,7 @@ def create_parser():
                                                               'o -> orange; m-> magenta \n')
     shp_option.add_argument('--fstyle', dest='fstyle', nargs='+', type=str, help='define line stype for faults:'
                                                               's -> solid; d -> dashed \n')
-    shp_option.add_argument('--refpoi', dest='refpoi', nargs=1, type=str, help='shp file of reference point. \n')
+    shp_option.add_argument('--refpoi', dest='refpoi', nargs='?', type=str, help='shp file of reference point. \n')
    
     gps_option = parser.add_argument_group(title='options for plot gps velocity vector field')
     
@@ -91,8 +99,20 @@ def create_parser():
 
     gps_option.add_argument('--gpsdir', dest='gpsdir',nargs='?', type=str, help='directory to store Nevada Geodetic Lab gps data. \n')
 
+    gps_option.add_argument('--scale', dest='scale', nargs=1, type=int, help='parameter for quiver.scale')
+
+    gps_option.add_argument('--scale_key', dest='scale_key', nargs=1, type=float, help='parameter for quiverkey.U \n')
+
     parser.add_argument('--vlim', dest = 'vlim', nargs=2, type=float, help='max and min value for displacement to display. The unit is m. \n')   
  
+    colorbar_option = parser.add_argument_group(title='options for the colorbar: linear colorbar or nonlinear colorbar')
+
+    colorbar_option.add_argument('--nonlinear', action='store_true', default=False, help='whether use nonlinear colorbar.')
+ 
+    #colorbar_option.add_argument('--level', dest='level', type=float, nargs=3, metavar=('L', 'H', 'N'),
+    #                              help='the lower bound and higher bound of range that display with nonlinear colorbar' + 
+    #                                   'N is the number of interval')
+
     parser.add_argument('--outdir',dest='outdir',nargs=1, type = str, help='output directory.\n')
 
     parser.add_argument('--outfile',dest='outfile', nargs=1, type=str, help='output file name.\n')
@@ -153,6 +173,7 @@ def cgps_process(gpsname, geometry):
 def ngps_process(gpsname, geometry, gps_dir):
     """process ngps sites""" 
     gps_obj = GPS(site=gpsname, data_dir=gps_dir)
+    print('process {} site'.format(gpsname))
     gps_obj.open()
     if not geometry:
         dis_los = ut.enu2los(gps_obj.dis_e, gps_obj.dis_n, gps_obj.dis_u)
@@ -192,24 +213,26 @@ def search_gpssites(inps):
     
     return sites_baseinfo
 
+#class nlcmap(object):
+#    def __init__(self, cmap, levels):
+#        self.cmap = cmap
+#        self.N = cmap.N
+#        self.monochrome = self.cmap.monochrome
+#        self.levels = np.asarray(levels, dtype='float64')
+#        self._x = self.levels
+#        self.levmax = self.levels.max()
+#        self.transformed_levels = np.linspace(0.0, self.levmax,  len(self.levels))
+
+#    def __call__(self, xi, alpha=1.0, **kw):
+#        yi = np.interp(xi, self._x, self.transformed_levels)
+#        return self.cmap(yi / self.levmax, alpha)
+
 def plot_geotiff(inps, site_infovel=None):
     """read geotiff data"""
-
-    shpdir = inps.shpdir[0]
 
     # read raster file
     raster = rasterio.open(inps.input_geotiff[0])
     
-    # read shape files
-    shp_refpoi = geopandas.read_file(shpdir + inps.refpoi[0])
-    
-    # read fault files and set color/linestyle
-    shp_faults = dict()
-    for fault in inps.fault:
-        shp_faults[fault] = geopandas.read_file(shpdir + fault)
-    fault_colors = fcolor(inps.fcolor, shp_faults)
-    fault_linestyles = flinestyle(inps.fstyle, shp_faults)
-
     """plot geotiff"""
     raster_data = raster.read(1)
     shape = np.shape(raster_data)
@@ -220,18 +243,53 @@ def plot_geotiff(inps, site_infovel=None):
         raster_min = inps.vlim[0]
         raster_max = inps.vlim[1]
     
+    # setting colorbar:linear or nonlinear
+#    if inps.nonlinear:
+#        level_lower = float(inps.level[0])
+#        level_higher = float(inps.level[1])
+#        level_num = int(inps.level[2])
+#        level_tmp = np.linspace(level_lower, level_higher, level_num)
+#        raster_mmin = np.array([raster_min])
+#        raster_mmax = np.array([raster_max])
+#        levels = np.concatenate((raster_mmin, level_tmp, raster_mmax), axis=0)
+
+#       cmap = nlcmap(plt.cm.jet, levels)     
+#    else:        
     cmap = plt.cm.jet
+
     figure_size = auto_figure_size(shape)
-    fig,axes = plt.subplots(1,1,figsize = figure_size)
+    fig, axes = plt.subplots(1,1,figsize = figure_size)
     ax1 = axes
     print('\n\n***************************************ploting raster data****************************************')
-    rasterio.plot.show(raster,1,ax = ax1, cmap=cmap,vmin = raster_min, vmax = raster_max, alpha=0.8)
-    print('\n\n***************************************ploting fault**********************************************')
-    for fault in inps.fault:
-        shp_faults[fault].plot(color=fault_colors[fault],ax=ax1, linestyle=fault_linestyles[fault], linewidth=1)
-    #shp_fault.plot(color='black',ax = ax1,linestyle='dashed',linewidth=1)
-    print('\n\n************************************ploting reference point****************************************')
-    shp_refpoi.plot(color='black',ax=ax1,marker='s')
+    if inps.nonlinear:
+        im = rasterio.plot.show(raster, 1, ax=ax1, norm=colors.SymLogNorm(linthresh=0.001, linscale=0.001,
+                                                                    base=10, vmin=np.nanmin(raster_data), 
+                                                                    vmax=np.nanmax(raster_data)),
+                                  cmap=cmap, alpha=0.8)
+    else:
+        rasterio.plot.show(raster, 1, ax=ax1, cmap=cmap, vmin=raster_min, vmax=raster_max, alpha=0.8)
+   
+    if inps.shpdir:
+        shpdir = inps.shpdir[0]
+        # read shape files
+        if inps.refpoi:
+            shp_refpoi = geopandas.read_file(shpdir + inps.refpoi)
+        
+            print('\n\n************************************ploting reference point****************************************')
+            shp_refpoi.plot(color='black', ax=ax1, marker='s')
+        
+        # read fault files and set color/linestyle
+        if inps.fault:
+            shp_faults = dict()
+            for fault in inps.fault:
+                shp_faults[fault] = geopandas.read_file(shpdir + fault)
+            fault_colors = fcolor(inps.fcolor, shp_faults)
+            fault_linestyles = flinestyle(inps.fstyle, shp_faults)
+    
+            print('\n\n***************************************ploting fault**********************************************')
+            for fault in inps.fault:
+                shp_faults[fault].plot(color=fault_colors[fault], ax=ax1, linestyle=fault_linestyles[fault], linewidth=1)
+                #shp_fault.plot(color='black',ax = ax1,linestyle='dashed',linewidth=1)
    
     # plot gps velocity vector field
     if site_infovel is not None:
@@ -239,23 +297,40 @@ def plot_geotiff(inps, site_infovel=None):
         lat = list(site_infovel[:,1].astype(float))
         x_component = list(site_infovel[:,5].astype(float))
         y_component = list(site_infovel[:,4].astype(float))
-    
-        ax1.quiver(lon, lat, x_component, y_component, color='black')
+        
+        quiver_scale = inps.scale[0]
+        h1 = ax1.quiver(lon, lat, x_component, y_component, color='black', scale=quiver_scale)
+        
+        U_parameters = inps.scale_key[0]
+        u_label = 'v:' + str(U_parameters) + 'm/s'
+        ax1.quiverkey(h1,X=0.09, Y = 0.05, U = U_parameters, angle = 0, label=u_label, labelpos='S', color = 'b',labelcolor = 'b')
 
     ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=True)
    
     # method 1 for drawing colorbar
-    cax = make_axes_locatable(ax1).append_axes("right", "3%", pad="3%")
-    norm = mpl.colors.Normalize(vmin=raster_min*100, vmax=raster_max*100)
-    cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
-    cbar.ax.tick_params(labelsize=18)
+    if inps.nonlinear:
+        cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.8])
+        sm1 = plt.cm.ScalarMappable(norm=colors.SymLogNorm(linthresh=0.001, linscale=0.001, base=10, 
+                                    vmin=np.nanmin(raster_data), vmax=np.nanmax(raster_data)), cmap=cmap)
+        sm1.set_array([])
+        sm1.set_clim(np.nanmin(raster_data),np.nanmax(raster_data))
+        #ig.colorbar(im,ax=ax1, extend='both')
+        cbar = fig.colorbar(sm1,cax1, orientation = 'vertical',format='%.2f')
+        cbar.ax.tick_params(labelsize=18)
+        cbar.set_ticks(np.array([np.nanmin(raster_data), -0.01, 0, 0.01, np.nanmax(raster_data)]))
+   
+    else:
+        cax = make_axes_locatable(ax1).append_axes("right", "3%", pad="3%")
+        norm = mpl.colors.Normalize(vmin=raster_min*100, vmax=raster_max*100)
+        cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+        cbar.ax.tick_params(labelsize=18)
 
     # method 2 for drawing colorbar
     #cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
-    #sm1 = plt.cm.ScalarMappable(cmap=cmap)
+    #sm1 = plt.cm.ScalarMappable(norm=colors.SymLogNorm(linthresh=0.001, linscale=0.001, base=10), cmap=cmap)
     #sm1.set_array([])
-    #sm1.set_clim(vmin = raster_min*100, vmax = raster_max*100)
-    ##fig.colorbar(sm1,cax1, orientation = 'vertical', label = 'LOS velocity(m/year)')
+    #sm1.set_clim(-1,1)
+    #fig.colorbar(sm1,cax1, orientation = 'vertical', label = 'LOS velocity(m/year)')
     #cbar = fig.colorbar(sm1,cax1, orientation = 'vertical',format='%.2f')
     #cbar.ax.tick_params(labelsize=18)
     ##cbar.set_ticks(np.linspace(-20,20,5))
