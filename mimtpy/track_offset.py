@@ -25,9 +25,9 @@ EXAMPLE = """example:
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output mosaic --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
 
-    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --pro_num 1 --ll 99.5 45 --outdir ./
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --pro_num 1 --ll 99.5 45 -g $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometry.h5 --outdir ./
     
-    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --pro_num 3 --outdir ./
+    track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --pro_num 3 -g $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometry.h5 --outdir ./
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometryRadar.h5 $SCRATCHDIR/BogdSenDT106/mintpy/inputs/geo_geometryRadar.h5 -ot ave --output Bogd_mosaic --outdir ./
 """
@@ -57,6 +57,7 @@ def create_parser():
     plotpair_opt.add_argument('--ll', dest='LONLAT', type=float, nargs=2,
                               help='longitude and latitude of point that you want to profile pass through.'
                                     'use this option when pro_num = 1.')
+    plotpair_opt.add_argument('-g', '--geometry', dest='geometry', type=str, help='geoemtry data of master track.')
 
     mosaic = parser.add_argument_group(title='mosaic options')
     #mosaic.add_argument('--mosaic', action='store_true', default=False, help='whether mosaic two track data.') 
@@ -320,6 +321,11 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     
     if inps.plotpair:
         outdir = inps.outdir[0]
+        # read geometry data for elevation matrix
+        geometry_file = inps.geometry
+        topography = readfile.read(geometry_file, datasetName='height')[0]
+        overlap_dem = topography[m_row0 : m_row0 + overlay_rows,m_colm0 : m_colm0 + overlay_colms]
+
         # calculate over_lat1 and over_lon1
         over_lat1 = over_lat0 + (overlay_rows - 1) * mosaic_lat_step
         over_lon1 = over_lon0 + (overlay_colms - 1) * mosaic_lon_step     
@@ -340,10 +346,13 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
             
             pro_obj = Profile(1, angle_rad, point_lon, point_lat, m_overlay, s_overlay, over_lat0, over_lon0, m_atr, s_atr, outdir)
             pro_obj.profile_extract()
-            profiles.profile_plot(pro_obj.lon_start, pro_obj.lat_start, pro_obj.lon_end, pro_obj.lat_end, pro_obj.m_profile, pro_obj.s_profile, pro_obj.m_name, pro_obj.s_name, outdir)
+            # dem value along the profile
+            dem_profile = overlap_dem[pro_obj.row_no, pro_obj.colm_no]
+            profiles.profile_plot(pro_obj.lon_start, pro_obj.lat_start, pro_obj.lon_end, pro_obj.lat_end, pro_obj.m_profile, pro_obj.s_profile, pro_obj.m_name, pro_obj.s_name, dem_profile, outdir)
         else:
             pro_catalog = profiles.search_profiles(inps.pro_num, over_lat0, over_lon0, over_lat1, over_lon1, m_atr, s_atr)         
             profile_dict_list = []
+            profile_dem_list = []
             for pro_NO in pro_catalog[:,0]:
                 profile_dict = dict()
                 pro_obj = Profile(int(pro_NO), angle_rad, pro_catalog[int(pro_NO)-1,1], pro_catalog[int(pro_NO)-1,2], m_overlay, s_overlay, over_lat0, over_lon0, m_atr, s_atr, outdir)        
@@ -354,12 +363,19 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
                 profile_dict['m_data'] = pro_obj.m_profile
                 profile_dict['s_data'] = pro_obj.s_profile
                 profile_dict_list.append(profile_dict)
+                
+                profile_dem = dict()
+                profile_dem['NO'] = int(pro_NO)
+                profile_dem['value'] = overlap_dem[pro_obj.row_no, pro_obj.colm_no]
+                profile_dem_list.append(profile_dem)
+
                 m_name = pro_obj.m_name
                 s_name = pro_obj.s_name
 
             # process multiprofiles
-            profile_dict_final = profiles.profile_average(inps.pro_num, profile_dict_list)
-            profiles.profiles_plot(profile_dict_final, m_name, s_name, outdir)             
+            profile_dict_final, profile_dem_final = profiles.profile_average(inps.pro_num, profile_dict_list, profile_dem_list)
+            profiles.profiles_plot(profile_dict_final, profile_dem_final, m_name, s_name, outdir)             
+            print('the mean difference between master and slave data is %f' % profile_dict_final[-1]['data'])
 
     return mosaic_data, mosaic_atr
 
