@@ -144,37 +144,58 @@ def calculate_cross_lines(line0_pos0, line0_pos1, line1_pos0, line1_pos1):
 
     return intersect_lon, intersect_lat
 
-def profile_average(profile_num, profile_dict_list):
+def profile_average(profile_num, profile_dict_list, profile_dem_list):
     """for multiprofiles, calculate the average value
        the input parameters is a list composed by dict
-       for example:
+       for profile_dict_list:
        [{'NO':1, 'p_start':array([lon_s,lat_s]), 'p_end':array([lon_e,lat_e]), 'm_data':array([1, 2, 3, 4, 5]),'s_data':array([1, 2, 3, 4, 5])},{}...]
+       for profile_dem_list:
+       [{'NO':1, 'value':array([1,2,3,4,5])},{}...]
        the output:
+       profile_dict_final:
        [{'NO':1, 'p_start':array([lon_s,lat_s]), 'p_end':array([lon_e,lat_e]), 'm_data':array([1, 2, 3, 4, 5]),'s_data':array([1, 2, 3, 4, 5])},{}...
         ,{'NO':'average','m_data':array([]),'s_data':([])}]
+       profile_dem_final:
+       [{'NO':1, 'value':array([1,2,3,4,5])},{}...,{'NO':'average', 'value':array([])}]
     """
     # length of profile
     length = len(profile_dict_list[0]['m_data'])
-    m_sum = np.zeros(length, dtype=float)
-    s_sum = np.zeros(length, dtype=float)
-    for pro in profile_dict_list:        
-       m_sum += pro['m_data']
-       s_sum += pro['s_data']
+    m_sum = np.empty((profile_num,length), dtype=float)
+    s_sum = np.empty((profile_num,length), dtype=float)
+    dem_sum = np.empty((profile_num,length), dtype=float)
+    for pro, dem in zip(profile_dict_list, profile_dem_list):
+       m_sum[(int(pro['NO']) - 1),:] = pro['m_data']
+       s_sum[(int(pro['NO']) - 1),:] = pro['s_data']
+       dem_sum[(int(dem['NO']) - 1)] = dem['value']
 
-    m_average = m_sum / profile_num
-    s_average = s_sum / profile_num
+    m_average = np.nanmean(m_sum, axis=0)
+    s_average = np.nanmean(s_sum, axis=0)
+    dem_average = np.nanmean(dem_sum, axis=0)
 
     profile_average = dict()
     profile_average['NO'] = 'average'
     profile_average['m_data'] = m_average
     profile_average['s_data'] = s_average
-    
+   
+    profile_difference = dict()
+    profile_difference['NO'] = 'difference'
+    subtraction = np.nanmean(np.abs(m_average - s_average))
+    profile_difference['data'] = subtraction
+ 
+    dem_dict = dict()
+    dem_dict['NO'] = 'average'
+    dem_dict['value'] = dem_average
+
     profile_dict_final = copy.deepcopy(profile_dict_list)
     profile_dict_final.append(profile_average)
+    profile_dict_final.append(profile_difference)
 
-    return profile_dict_final
+    profile_dem_final = copy.deepcopy(profile_dem_list)
+    profile_dem_final.append(dem_dict)
 
-def profiles_plot(profile_dict_final, m_name, s_name, outdir):
+    return profile_dict_final, profile_dem_final
+
+def profiles_plot(profile_dict_final, profile_dem_final, m_name, s_name, outdir):
     """plot multi profiles with the average value""" 
     figure_size = [10,8]
     fig,axes = plt.subplots(1,1,figsize = figure_size)
@@ -182,21 +203,31 @@ def profiles_plot(profile_dict_final, m_name, s_name, outdir):
     print('*****************************ploting profile************************')       
     length = len(profile_dict_final[0]['m_data'])
     x_axis = np.arange(1,length + 1)
+    
     for pro in profile_dict_final:
-        if pro['NO'] != 'average':
-            ax1.scatter(x_axis, pro['m_data'], marker='.', c='lightgray',alpha=0.5)
-            ax1.scatter(x_axis, pro['s_data'], marker='.', c='lightskyblue',alpha=0.5)
-        else:
-            ax1.plot(x_axis, pro['m_data'], color='black', linestyle='-', label=m_name)
-            ax1.plot(x_axis, pro['s_data'], color='blue', linestyle='-', label=s_name)
+        if pro['NO'] != 'average' and pro['NO'] != 'difference':
+            ax1.scatter(x_axis, (pro['m_data']) * 100, marker='.', c='lightgray',alpha=0.5)
+            ax1.scatter(x_axis, (pro['s_data'] + 0.05) * 100, marker='.', c='lightskyblue',alpha=0.5)
+        elif pro['NO'] != 'difference' and pro['NO'] == 'average':
+            ax1.plot(x_axis, (pro['m_data']) * 100, color='black', linestyle='-', label=m_name)
+            ax1.plot(x_axis, (pro['s_data'] + 0.05) * 100, color='blue', linestyle='-', label=s_name)
+                
+    ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=False)
+    
+    # plot topography
+    ax2 = ax1.twinx()
+    dem_ave = profile_dem_final[-1]
+    ax2.plot(x_axis, dem_ave['value'], color='magenta', linestyle='-')
+    ax2.set_ylim(np.nanmin(dem_ave['value']), np.nanmax(dem_ave['value']) + 5000)
+    ax2.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=False, right=True) 
 
-    ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=True)
     font1 = {'family' : 'serif',
              'weight': 'normal',
              'size' : 18.}
     ax1.set_xlabel('Distance [km]',font1)
     ax1.set_ylabel('LOS Displacement [cm]',font1)
-    
+    ax2.set_ylabel('Elevation [km]', font1)
+
     # set x label to km
     lon_s = copy.deepcopy(profile_dict_final[0]['p_start'][0])
     lat_s = copy.deepcopy(profile_dict_final[0]['p_start'][1])
@@ -218,7 +249,7 @@ def profiles_plot(profile_dict_final, m_name, s_name, outdir):
     fig_output = outdir + fig_name
     fig.savefig(fig_output, dpi=300, bbox_inches='tight')
 
-def profile_plot(lon_s, lat_s, lon_e, lat_e, m_profile, s_profile, m_name, s_name, outdir):
+def profile_plot(lon_s, lat_s, lon_e, lat_e, m_profile, s_profile, m_name, s_name, dem_profile, outdir):
 #def profile_plot(self, m_name, s_name):
     """plot master and slave data along one profile"""
     # plot two profiles
@@ -229,14 +260,21 @@ def profile_plot(lon_s, lat_s, lon_e, lat_e, m_profile, s_profile, m_name, s_nam
     x_axis = np.arange(1,len(m_profile)+1)
     ax1.plot(x_axis, m_profile, color='black', linestyle='-', label=m_name)
     ax1.plot(x_axis, s_profile, color='blue', linestyle='-', label=s_name)
-
     ax1.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=True, right=True)
+    
+    # plot topography
+    ax2 = ax1.twinx()
+    ax2.plot(x_axis, dem_profile, color='magenta', linestyle='-')
+    ax2.set_ylim(np.nanmin(dem_profile), np.nanmax(dem_profile) + 5000)
+    ax2.tick_params(which='both', direction='in', labelsize=18, bottom=True, top=True, left=False, right=True) 
+    
     font1 = {'family' : 'serif',
              'weight': 'normal',
              'size' : 18.}
     ax1.set_xlabel('Distance [km]',font1)
     ax1.set_ylabel('LOS Displacement [cm]',font1)
-    
+    ax2.set_ylabel('Elevation [km]', font1)    
+
     # set x label to km
     distance = distance_2points(lon_s, lat_s, lon_e, lat_e)
     xtick = np.linspace(0, int(np.ceil(distance)), num=10, endpoint=True)
@@ -369,20 +407,20 @@ class Profile:
             elif anlge == 0:
                 colm_no = np.ceil(np.ones(rows) * colm_x)
        
-        row_no = row_no.astype(dtype=np.int)
-        colm_no = colm_no.astype(dtype=np.int) 
-        self.m_profile = self.m_overlay[row_no, colm_no]    
-        self.s_profile = self.s_overlay[row_no, colm_no] 
+        self.row_no = row_no.astype(dtype=np.int)
+        self.colm_no = colm_no.astype(dtype=np.int) 
+        self.m_profile = self.m_overlay[self.row_no, self.colm_no]    
+        self.s_profile = self.s_overlay[self.row_no, self.colm_no] 
 
         # change zero value to np.nan
         self.m_profile[(self.m_profile == 0)] = np.nan
         self.s_profile[(self.s_profile == 0)] = np.nan
 
         # calaculate lat/lon for profiles of two tracks
-        row_start = row_no[0]
-        row_end = row_no[-1]
-        colm_start = colm_no[0]
-        colm_end = colm_no[-1]
+        row_start = self.row_no[0]
+        row_end = self.row_no[-1]
+        colm_start = self.colm_no[0]
+        colm_end = self.colm_no[-1]
         self.lon_start, self.lat_start = self.rowcolm2ll(row_start, colm_start)
         self.lon_end, self.lat_end = self.rowcolm2ll(row_end, colm_end)
         
