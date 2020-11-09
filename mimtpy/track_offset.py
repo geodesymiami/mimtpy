@@ -13,6 +13,7 @@ import numpy as np
 import json
 import math
 import re
+import h5py
 
 import matplotlib.pyplot as plt
 from mintpy.utils import readfile, writefile
@@ -30,6 +31,8 @@ EXAMPLE = """example:
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output Bogd_mosaic --plotpair --pro_num 3 -g $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometry.h5 --outdir ./
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometryRadar.h5 $SCRATCHDIR/BogdSenDT106/mintpy/inputs/geo_geometryRadar.h5 -ot ave --output Bogd_mosaic --outdir ./
+
+    track_offset.py ../../SpainSenAT147/mintpy/timeseries/timeseries_demErr_ERA5.h5 ../../SpainSenAT74/mintpy/timeseries/timeseries_demErr_ERA5.h5 --output timeseries_AT147_74 --outdir ./
 """
 
 def create_parser():
@@ -175,7 +178,7 @@ def calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag):
     s_row0, s_colm0 = calculate_rc(s_lat0,s_lon0,over_lat0,over_lon0,float(s_atr['Y_STEP']),float(s_atr['X_STEP']))
     #s_row1, s_colm1 = calculate_rc(s_lat0,s_lon0,over_lat1,over_lon1,float(s_atr['Y_STEP']),float(s_atr['X_STEP']))
 
-    if typeflag == 0:
+    if typeflag == 0 or typeflag == 2:
         # calculate overlay region in master and slave
         m_overlay = m_data[m_row0 : m_row0 + overlay_rows,m_colm0 : m_colm0 + overlay_colms]
         s_overlay = s_data[s_row0 : s_row0 + overlay_rows,s_colm0 : s_colm0 + overlay_colms]
@@ -400,6 +403,8 @@ def judge_data_datasets(m_atr):
     file_type = m_atr['FILE_TYPE']
     if file_type == 'geometry':
         typeflag = 1
+    elif file_type == 'timeseries':
+        typeflag = 2
     else:
         typeflag = 0
 
@@ -431,7 +436,7 @@ def main(iargs=None):
         mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
         write_mosaic(inps,mosaic_data, mosaic_atr)
             
-    else:
+    elif typeflag == 1:
         dataslice = ['azimuthAngle', 'height', 'incidenceAngle', 'latitude', 'longitude', 'shadowMask', 'slantRangeDistance']
         m_file = "".join(inps.master)
         s_file = "".join(inps.slave)
@@ -452,8 +457,46 @@ def main(iargs=None):
             mosaic_dataset[dslice] = mosaic_data 
             print('finish mosaic %s' % dslice)       
         write_mosaic(inps,mosaic_dataset, mosaic_atr)
+    else:
+        m_file = "".join(inps.master)
+        s_file = "".join(inps.slave)
 
-          
+        m_data = readfile.read(m_file, datasetName='timeseries')[0]
+        s_data = readfile.read(s_file, datasetName='timeseries')[0]
+        
+        bperp_date = h5py.File(m_file,'r')
+        m_bperp = bperp_date['bperp']
+        m_date = bperp_date['date']
+
+        # judging whether master and slave data have same dimension
+        m_dim = m_data.shape[0]
+        m_rows, m_colms = m_data.shape[1:3]
+        s_dim = s_data.shape[0]
+        s_rows, s_colms = s_data.shape[1:3]
+        mosaic_dataset = dict()
+
+        if m_dim != s_dim:
+            raise Exception('the dimension of master data and slave data is not consistent! Please check!')
+        else:
+            offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data[0,:,:],s_atr,s_data[0,:,:],typeflag)
+            mosaic_rows = m_rows + s_rows - overlay_rows
+            mosaic_colms = m_colms + s_colms - overlay_colms
+            mosaic_timeseries = np.empty(shape=(m_dim, mosaic_rows, mosaic_colms))
+
+            for i in np.arange(m_dim):
+                # calculated offset and mosaic two tracks
+                offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data[i,:,:],s_atr,s_data[i,:,:],typeflag)
+                s_data_offset = rewrite_slave(inps,offset,s_atr,s_data[i,:,:])
+                 
+                print('prepare mosaicing:\n')
+                mosaic_timeseries[i,:,:], mosaic_atr = mosaic_tracks(inps,m_atr,m_data[i,:,:],s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+            
+            mosaic_dataset['bperp'] = m_bperp
+            mosaic_dataset['date'] = m_date
+            mosaic_dataset['timeseries'] = mosaic_timeseries
+
+            write_mosaic(inps,mosaic_dataset, mosaic_atr)
+                  
 ######################################################################################
 if __name__ == '__main__':
     main()
