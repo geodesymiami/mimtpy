@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 ############################################################
-# Program is part of MintPy                                #
-# Copyright (c) 2013, Zhang Yunjun, Heresh Fattahi         #
-# Author: Heresh Fattahi, 2013                             #
+# Program is part of Mimtpy                                #
+# Note: this script is done based on Fattahi's script      #
+# Author: Xiaoran Lv, 2020                                 #
 ############################################################
 
 
@@ -29,14 +29,18 @@ def usage():
           the order of longitude must be descrease
        -p flip profile left-right (yes or no) [default: no]
        -u flip up - down [default: no]
+
        -g gps_file (if exists)
        -S source of GPS velocities (usgs,cmm4,mintpy)
        -G gps stations to compare with InSAR  (all,insar,profile)  
           "all": all gps stations is projected to the profile 
           "insar": same as all but limited to the area covered by insar    
           "profile": only those gps stations which are in the profile area]
+
        -T DEM data: geo_geometry.h5 data
        -C coherence data: temporalCoherence.h5 data    
+       -v displacement data1
+       -f displacement data2
  
        -x lower bound to display in x direction
        -X higher bound to display in x direction
@@ -52,14 +56,14 @@ def usage():
        -B txt files (two files) including the fault coordinates (first column: lon, second column: lat)
           the order of longitude must be descrease
    Example:
-       multi_transect.py -f geo_velocity_masked.h5 -n 50 -d 1 -W 10 -D 2 -F Chaman_fault.txt 
-       multi_transect.py -f displacement.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt 
-       multi_transect.py -f displacement.h5 -T geo_geometry.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt
-       multi_transect.py -f displacement.h5 -C temporalCoherence.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt
-       multi_transect.py -f displacement.h5 -C temporalCoherence.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt -R 2
-       multi_transect.py -f up.h5 -T ../../geometry/creep_zoom/subset_geo_geometry_mosaic.h5 -C ../../coherence/subset_temporalCoherence.h5 -n 30 -d 1 -W 76 -D 10 -l -40 -h 20 -F ../Bolnay_fault_profiles_part.txt
-       multi_transect.py -f up.h5 -v hz.h5 -T ../../geometry/creep_zoom/subset_geo_geometry_mosaic.h5 -C ../../coherence/subset_temporalCoherence.h5 -n 30 -d 1 -W 76 -D 10 -l -40 -h 20 -F ../Bolnay_fault_profiles_part.txt
-       multi_transect.py -f subset_DTs_hz.h5 -v subset_DTs_up.h5 -T subset_geo.h5 -C subset_coherence.h5 -n 30 -d 1 -W 35 -D 10 -l -50 -h 50 -F ../Bolnay_fault_profiles_part.txt -R 2
+       multi_transects.py -f geo_velocity_masked.h5 -n 50 -d 1 -W 10 -D 2 -F Chaman_fault.txt 
+       multi_transects.py -f displacement.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt 
+       multi_transects.py -f displacement.h5 -T geo_geometry.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt
+       multi_transects.py -f displacement.h5 -C temporalCoherence.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt
+       multi_transects.py -f displacement.h5 -C temporalCoherence.h5 -n 50 -d 1 -W 10 -D 2 -F Bolnay_fault.txt -R 2
+       multi_transects.py -f up.h5 -T ../../geometry/creep_zoom/subset_geo_geometry_mosaic.h5 -C ../../coherence/subset_temporalCoherence.h5 -n 30 -d 1 -W 76 -D 10 -l -40 -h 20 -F ../Bolnay_fault_profiles_part.txt
+       multi_transects.py -f up.h5 -v hz.h5 -T ../../geometry/creep_zoom/subset_geo_geometry_mosaic.h5 -C ../../coherence/subset_temporalCoherence.h5 -n 30 -d 1 -W 76 -D 10 -l -40 -h 20 -F ../Bolnay_fault_profiles_part.txt
+       multi_transects.py -f subset_DTs_hz.h5 -v subset_DTs_up.h5 -T subset_geo.h5 -C subset_coherence.h5 -n 30 -d 1 -W 35 -D 10 -l -50 -h 50 -F ../Bolnay_fault_profiles_part.txt -R 2
 ********************************************************************************************
     """)
     return
@@ -1111,6 +1115,9 @@ def main(argv):
             dataset['datavec'] = transect
             if velocityFile2 and velocityFile2 != 'NoFile2':
                 dataset['datavec2'] = transect2
+            if topography and topography != 'NoDEM':
+                dataset['datadem'] = dem_transect
+
             try:
                 dataset['lat'] = transect_lat
                 dataset['lon'] = transect_lon
