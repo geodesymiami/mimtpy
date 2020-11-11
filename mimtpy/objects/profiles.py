@@ -25,11 +25,11 @@ def search_profiles(profile_num, over_lat0, over_lon0, over_lat1, over_lon1, m_a
     Returns:    profile_catalog : 2D np.array of string for number of profile, lon/lat of point that was passed by profile 
     """
     m_polygon = m_atr['scene_footprint']
-    m_footprint = re.findall(r'([\d+\.]+)',m_polygon)
+    m_footprint = re.findall(r'(-?[\d+\.]+)',m_polygon)
 
     s_polygon = s_atr['scene_footprint']
-    s_footprint = re.findall(r'([\d+\.]+)',s_polygon)
-
+    s_footprint = re.findall(r'(-?[\d+\.]+)',s_polygon)
+    
     # obtain the overlapping footprint
     # footprint of master and slave track
     m_outline = track_outline_matrix(m_footprint)
@@ -42,11 +42,15 @@ def search_profiles(profile_num, over_lat0, over_lon0, over_lat1, over_lon1, m_a
                  (s_outline[:,0] >= over_lon0) * (s_outline[:,0] <= over_lon1))
     
     # get the top points for the footprint overlapping region
+
     overlap_footprint = np.vstack((m_outline[m_idx_tmp],s_outline[s_idx_tmp])) 
     result_sort = np.sort(overlap_footprint[:,1],axis=0)
     # the second and third latitude after sorting are two points for the overlapping footprint
     target1 = result_sort[1]
     target2 = result_sort[2]
+
+    #import pdb
+    #pdb.set_trace()
 
     # find the m_idx and s_idx for target1 and target2
     if (m_outline[:,1] == target1).any(): 
@@ -60,20 +64,37 @@ def search_profiles(profile_num, over_lat0, over_lon0, over_lat1, over_lon1, m_a
         s_idx = np.argwhere(s_outline[:,1] == target2)[0,0]
     
     # define upper horizontal line of the overlapping footprint
-    if m_outline[m_idx,:][1] > s_outline[s_idx,:][1]:
-        if m_idx == 0 or m_idx == 3:
-            m_end_idx = 3 - m_idx
-        if s_idx == 0 or s_idx == 1:
-            s_end_idx = 1 - s_idx
-        elif s_idx == 2 or s_idx == 3:
-            s_end_idx = 5 - s_idx        
+    if m_atr['flight_direction'] == 'D':
+        if m_outline[m_idx,:][1] > s_outline[s_idx,:][1]:
+            if m_idx == 0 or m_idx == 3:
+                m_end_idx = 3 - m_idx
+            if s_idx == 0 or s_idx == 1:
+                s_end_idx = 1 - s_idx
+            elif s_idx == 2 or s_idx == 3:
+                s_end_idx = 5 - s_idx        
+        else:
+            if s_idx == 0 or s_idx == 3:
+                s_end_idx = 3 - s_idx
+            if m_idx == 0 or m_idx == 1:
+                m_end_idx = 1 - m_idx
+            elif m_idx == 2 or m_idx == 3:
+                m_end_idx = 5 - m_idx
     else:
-        if s_idx == 0 or s_idx == 3:
-            s_end_idx = 3 - s_idx
-        if m_idx == 0 or m_idx == 1:
-            m_end_idx = 1 - m_idx
-        elif m_idx == 2 or m_idx == 3:
-            m_end_idx = 5 - m_idx
+        if m_outline[m_idx,:][1] > s_outline[s_idx,:][1]:
+            if m_idx == 1 or m_idx == 2:
+                m_end_idx = 3 - m_idx
+            if s_idx == 0 or s_idx == 1:
+                s_end_idx = 1 - s_idx
+            elif s_idx == 2 or s_idx == 3:
+                s_end_idx = 5 - s_idx
+
+        else:
+           if s_idx == 1 or s_idx == 2:
+               s_end_idx = 3 - s_idx
+           if m_idx == 0 or m_idx == 1:
+               m_end_idx = 1 - m_idx
+           elif m_idx == 2 or m_idx == 3:
+               m_end_idx = 5 - m_idx
 
     line0_start = m_outline[m_idx,:]
     line0_end = m_outline[m_end_idx,:]
@@ -439,4 +460,4 @@ class Profile:
         # profile_plot()
   
         return 
-#################################### End of GPS-UNR class ####################################
+#################################### End of class ####################################
