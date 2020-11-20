@@ -145,11 +145,11 @@ def extract_data(inps,dataset,outdir):
             #if inps.ref_yx:
             #    data -= data[inps.ref_yx[0], inps.ref_yx[1]]
         elif attr == 'velocity':
+            maskfile = readfile.read("".join(inps.input_HDFEOS),datasetName='/HDFEOS/GRIDS/timeseries/quality/mask')[0]
             dname = 'displacement'
             data_timeseries = readfile.read("".join(inps.input_HDFEOS),datasetName = dataset+dname)[0]
             if inps.mask:
                 print("mask file")
-                maskfile = readfile.read("".join(inps.input_HDFEOS),datasetName='/HDFEOS/GRIDS/timeseries/quality/mask')[0]
                 data_timeseries[:,maskfile == 0] = np.nan
             bperp_date = h5py.File("".join(inps.input_HDFEOS),'r')
             data_bperp = bperp_date[(dataset+'bperp')]
@@ -170,8 +170,13 @@ def extract_data(inps,dataset,outdir):
             completion_status = os.system(multitrack_utilities.seperate_str_byspace(['timeseries2velocity.py', outfile, '--start-date', date1, '--end-date', date2, '--exclude', '../exclude_date.txt', '--output', output_vel]))
             if completion_status == 1:
                 raise Exception('error when generate velocity!')  
-            date_vel = readfile.read(output_vel, datasetName='velocity')[0]
-            data = date_vel
+            data_vel, vel_atr = readfile.read(output_vel, datasetName='velocity')
+            data = data_vel
+            if inps.mask:
+                print("mask file")
+                data[~maskfile] = np.nan
+            writefile.write(data, out_file=output_vel, metadata=vel_atr)    
+            
             os.chdir('../')
     else:
         data = readfile.read("".join(inps.input_HDFEOS),datasetName=dataset+attr)[0]
