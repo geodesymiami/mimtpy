@@ -29,7 +29,9 @@ EXAMPLE = """example:
 
     synthetic_S1.py mask.h5 KokoxiliModelData_AT143.h5 --outdir ./
     
-    synthetic_S1.py mask.h5 KokoxiliModelData_AT143.h5 --ramp --tramp 1e-06 1e-06 0.003 --tiramp_whole 1e-07 1e-08 0.001--outdir ./
+    synthetic_S1.py mask.h5 KokoxiliModelData_AT143.h5 --ramp --tramp 1e-06 1e-06 0.003 --tiramp_whole 1e-07 1e-08 0.001 --outdir ./
+    
+    synthetic_S1.py mask.h5 KokoxiliModelData_AT143.h5 --ramp --tramp 1e-06 1e-06 0.003 --tiramp_whole 1e-07 1e-08 0.001 --atmo --atmofile atmospheric_noise.h5 --outdir ./
 """
 
 def create_parser():
@@ -66,6 +68,10 @@ def create_parser():
                          help='residual troposphere / ionosphere linear ramp for swath1, swath2 and swath3 in X and Y direction.')
 
     parser.add_argument('--wrap', action='store_true', default=False, help='whether wrap the synthetic data.\n')
+
+    parser.add_argument('--atmo', action='store_true', default=False, help='whether add atmo noise data.')
+  
+    parser.add_argument('--atmofile', dest='atmofile', nargs=1, type=str, help='atmospheric noise')
 
     #parser.add_argument('-o','--outfile',dest='outfile',nargs=1, type=str,
     #                    help='outfile name')
@@ -234,6 +240,12 @@ def generate_linear_ramp(mask_swaths, X, Y, inps):
         
     data_ramp += data_tiramp
 
+    # read the atmospheric data
+    if inps.atmo:
+        inps.atmo_data = read_model_h5(inps.atmofile[0])
+        inps.atmo_data = inps.atmo_data[0:inps.row, 0:inps.colm]
+        write_atmo_data(inps.atmo_data, inps)
+
     # calculated the synthetic model data + ramp
     if inps.modelfile:
         inps.model_data = read_model_h5(inps.modelfile)
@@ -244,7 +256,7 @@ def generate_linear_ramp(mask_swaths, X, Y, inps):
             raise Exception('Error! The dimension of modeled data and simulated ramp is disagree!')
         inps.model_data = inps.model_data.reshape(-1,1)
         inps.model_data += data_ramp
- 
+    
     # wrapped
     if inps.wrap:
         vmin = -float(inps.metadata['WAVELENGTH']) / 4
@@ -330,6 +342,12 @@ def write_model_data(model_data_copy, inps):
     model_data_copy_wrap = vmin + np.mod(model_data_copy - vmin, vmax - vmin)
     outfile = inps.outdir[0] + inps.modelfile.split('.')[0] + '_mintpy_wrap.h5'
     writefile.write(model_data_copy_wrap, out_file=outfile, metadata=inps.metadata)
+
+def write_atmo_data(atmo_data, inps):
+    """change atmospheric noise data to mintpy format"""
+    atmo_data[inps.mask == False] = np.nan
+    outfile = inps.outdir[0] + inps.atmofile[0].split('.')[0] + '_mintpy.h5'
+    writefile.write(atmo_data, out_file=outfile, metadata=inps.metadata)
 ######################################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
