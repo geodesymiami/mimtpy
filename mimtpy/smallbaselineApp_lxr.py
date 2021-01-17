@@ -235,7 +235,7 @@ class TimeSeriesAnalysis:
         self._read_template()
 
         # 4. Copy the plot shell file
-        sh_file = os.path.join(os.path.dirname(__file__), 'sh/plot_smallbaselineApp.sh')
+        sh_file = os.path.join(os.path.dirname(__file__), 'sh/plot_smallbaselineApp_lxr.sh') #lxr
 
         def grab_latest_update_date(fname, prefix='# Latest update:'):
             try:
