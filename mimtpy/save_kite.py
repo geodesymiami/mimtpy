@@ -25,20 +25,23 @@ EXAMPLE = """example:
 """
 
 def create_parser():
-    parser = argparse.ArgumentParser(description='Prepare data for Kite software',
+    parser = argparse.ArgumentParser(description='Prepare Kite Scene for Kite software using MintPy HDFEOS file',
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog=EXAMPLE)
 
     parser.add_argument('input_HDFEOS', nargs=1, type=str, help='HDFEOS file. \n')
 
-    parser.add_argument('--date', dest='date',nargs=1, help='formate: date1_date2. \n')
+    parser.add_argument('--date', dest='date',nargs=1, 
+                        help='The start date and end date used for calculationg velocity or displacemnt.\n'+
+                              'The required formate is startDate_endDate. \n')
 
-    parser.add_argument('--velocity', action='store_true', default=False, help='whether calculate velocity. \n')
+    parser.add_argument('--velocity', action='store_true', default=False, 
+                        help='whether calculate velocity data.\n'+
+                        'The cumulative displacement between start date and end date will be calculated as default\n')
 
     parser.add_argument('--bbox', dest='SNWE', type=float, nargs=4, metavar=('S', 'N','W','E'),
-                        help='Bounding box of area to be geocoded.\n'+
-                        'Include the uppler left corner of the first pixel' +
-                        'and the lower right corner of the last pixel')
+                        help='Latitude and Longitude range for the subset region pointed by the user\n'+
+                        'The format is [lat_min lat_max lon_min lon_max]')
     
     parser.add_argument('-o','--outfile',dest='outfile',nargs=1,
                         help='outfile name.')
@@ -133,12 +136,12 @@ def read_HDFEOS(inps):
     azimuth[maskfile == 0] = np.nan
     incidence[maskfile == 0] = np.nan
     
-    return data, atr, incidence, azimuth
+    return date1, date2, data, atr, incidence, azimuth
 
 def save_kite(inps):
     """save kite"""
     # read mintpy data
-    disp, disp_atr, incidence, azimuth = read_HDFEOS(inps)
+    date1, date2, disp, disp_atr, incidence, azimuth = read_HDFEOS(inps)
 
     # subset data based on bbox
     if inps.SNWE:
@@ -187,7 +190,19 @@ def save_kite(inps):
 
     # Saving the scene
     print('write Kite scene')
-    sc.save(inps.outfile[0])
+    if inps.outfile is not None:
+        kite_outfile = inps.outfile[0]
+    else:
+        if inps.velocity:
+            data_type = 'vel'
+        else:
+            data_type = 'dis'
+        if inps.SNWE is not None:
+            kite_outfile = inps.input_HDFEOS[0].split('.')[0] + '_' + str(date1) + '_' + str(date2) + '_' + data_type + '_subset'
+        else:
+            kite_outfile = inps.input_HDFEOS[0].split('.')[0] + '_' + str(date1) + '_' + str(date2) + '_' + data_type
+
+    sc.save(kite_outfile)
 ######################################################################################
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
