@@ -13,20 +13,12 @@ Kite
 
 The folder structure of MintPy product should be:
 
-                                  |---S1***.he5
-$SCRATCHDIR---Project1---mintpy---|
-                                  |---inputs--geometryRadar.h5
+$SCRATCHDIR---Project1---mintpy---S1***.he5 & inputs--geometryRadar.h5
 
 # Folder structure after runing mimtpyApp.py:
 
 
-                                  |---S1***.he5
-$SCRATCHDIR---Project1---mintpy---|
-                                  |---inputs---geometryRadar.h5
-                                  |---velocity---|---velocity_date1_date2.h5
-                                  |              |---velocity_dat1_date2.tiff
-                                  |---displacement---|---displacement_date1_date2.h5
-                                                     |---displacement_date1_date2.tiff
+$SCRATCHDIR---Project1---mintpy---S1***.he5 & inputs---geometryRadar.h5 & velocity---velocity_date1_date2.h5 & displacement---displacement_date1_date2.h5
 
 # The composition of MimtPy
 # Basic module
