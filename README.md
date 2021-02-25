@@ -31,31 +31,37 @@ osgeo
 #### install Kite following its handbook
 Kite  
 
-## 2. the Pre-requirement of MimtPy
-### 2.1 The folder structure of MintPy product should be:  
+## 2. Directory structure
+### 2.1 Required structure (from MintPy):  
 
 ```
-$SCRATCHDIR
--Project1  
---mintpy  
----HDFEOS file  
----inputs  
-----geometryRadar.h5
+$SCRATCHDIR/GalapagosSenDT128
+├── mintpy
+    ├── S1_IW1_128_0593_0597_20141213_20180607.he5
+```
+Some applications (which?) require the original interferogram stack and geometry file
+```
+$SCRATCHDIR/GalapagosSenDT128
+├── mintpy
+    ├── S1_IW1_128_0593_0597_20141213_20180607.he5
+    ├── inputs
+        ├── geometryRadar.h5
+        ├── ifgramStack.he5
 ```
 
 ### 2.2 Folder structure after runing mimtpyApp.py:
 
 ```
-$SCRATCHDIR  
--Project1  
---mintpy  
----HDFEOS file  
----inputs
-----geometryRadar.h5
----velocity
-----velocity_date1_date2.h5
----displacement
-----displacement_date1_date2.h5`
+$SCRATCHDIR/GalapagosSenDT128
+├── mintpy
+    ├── S1_IW1_128_0593_0597_20141213_20180607.he5
+    ├── inputs
+    |   ├── geometryRadar.h5
+    |   ├── ifgramStack.he5
+    ├── velocity
+    |   ├── velocity_date1_date2.h5 
+    ├── displacement
+        ├── displacement_date1_date2.h5 
 ```
 
 ## 3. Runing MimtPy
@@ -74,45 +80,48 @@ Inside the mimtpyApp.py it can generate displacement or velocity between two dat
 
 ## 3.2 other function in MimtPy
 
-```
+### Singletrack scripts to prepare for modelling
+
+- save_kite.py: generate Kite scene using HDFEOS data.
+
+- save_insamp.py: prepare data for Barnhart's InSAMP software (written in Matlab). Please note that the data used by this script must be geocoded.
+
+- save_geodmod.py: generate files used by Geodmod software.
+
+### Other singletrack scripts
+
+- HDFEOS_to_geotiff.py: transferring S1**.he5 file into *.h5 and *.geotiff files based on given dataset name.
+
+- multi_transects.py: Extract data along the profiles which are perpendicular to the fault
+
+- H5UNW_to_geotiff.py: transferring *.unw or *.h5 file into geotiff file.
+
+- generate_track_polygon.py: Get the footprint scene of each project  
+
 ### Multitrack scripts
 
-mimtpyApp.py: generate files according to mimtpyApp.template 
+- mimtpyApp.py: generate files according to mimtpyApp.template 
 
-track_offsets.py: concatenate adjacent tracks
+- track_offsets.py: concatenate adjacent tracks
 
-overlap2horz_vert.py: Calculate horizontal and vertical value from the overlap region between adjacent tracks
+- overlap2horz_vert.py: Calculate horizontal and vertical value from the overlap region between adjacent tracks
 
 ### Plot scripts
 
-plot_geotiff.py: plot geotiff files with given *.shp files and gps velocity vector field.
+- plot_geotiff.py: plot geotiff files with given *.shp files and gps velocity vector field.
 
-### Singletrack scripts
-
-HDFEOS_to_geotiff.py: transferring S1**.he5 file into *.h5 and *.geotiff files based on given dataset name.
-
-multi_transects.py: Extract data along the profiles which are perpendicular to the fault
-
-H5UNW_to_geotiff.py: transferring *.unw or *.h5 file into geotiff file.
-
-generate_track_polygon.py: Get the footprint scene of each project  
 
 ### Modelling scripts:
 
-synthetic_S1.py: simulate linear ramps
+- generate_script_RELAX_V2.py: generate template files for RELAX. People must given one example file.
 
-save_geodmod.py: generate files used by Geodmod software.
+- gridsearch_ramps_batch_relax: doing gridseach batchlly
 
-save_kite.py: generate Kite scene using HDFEOS data.
+- gridsearch_ramps_relax: doing gridsearch for one pair of parameter
 
-save_insamp.py: prepare data for Barnhart's InSAMP software (written in Matlab). Please note that the data used by this script must be geocoded.
+### Other utilities:
 
-generate_script_RELAX_V2.py: generate template files for RELAX. People must given one example file.
-
-gridsearch_ramps_batch_relax: doing gridseach batchlly
-
-gridsearch_ramps_relax: doing gridsearch for one pair of parameter
-```
+- synthetic_S1.py: simulate linear ramps
 
 ## 4. Access to mintpy data products
 Browse through all directories using: https://129.114.104.223/data/HDF5EOS 
