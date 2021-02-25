@@ -11,9 +11,9 @@ Run the following in your terminal to download the development version of MimiPy
 `cd rsmas_insar/source/`  
 `git clone https://github.com/geodesymiami/mimtpy.git  `
 
-Seting the following environment variables in your environment.bash
+Seting the following environment variables in your environment.bash  
 
-'export MIMTPY_HOME=${RSMASINSAR_HOME}/sources/MimtPy'
+`export MIMTPY_HOME=${RSMASINSAR_HOME}/sources/MimtPy'
 `export PYTHONPATH=${PYTHONPATH}:${MIMTPY_HOME}`
 `export PATH=${PATH}:${MIMTPY_HOME}/mimtpy` 
 
