@@ -13,9 +13,9 @@ Run the following in your terminal to download the development version of MimiPy
 
 Seting the following environment variables in your environment.bash  
 
-`export MIMTPY_HOME=${RSMASINSAR_HOME}/sources/MimtPy'
-`export PYTHONPATH=${PYTHONPATH}:${MIMTPY_HOME}`
-`export PATH=${PATH}:${MIMTPY_HOME}/mimtpy` 
+`export MIMTPY_HOME=${RSMASINSAR_HOME}/sources/MimtPy'  
+`export PYTHONPATH=${PYTHONPATH}:${MIMTPY_HOME}`  
+`export PATH=${PATH}:${MIMTPY_HOME}/mimtpy`   
 
 ### 2. the packages used in MimtPy that should be installed
 
