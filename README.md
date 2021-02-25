@@ -8,14 +8,14 @@ Test only on Linux, not sure about MacOS and Windows
 ### 1. Download and setup
 Run the following in your terminal to download the development version of MimiPy
 
-`cd rsmas_insar/source/`  
-`git clone https://github.com/geodesymiami/mimtpy.git  `
+`cd rsmas_insar/source/  
+git clone https://github.com/geodesymiami/mimtpy.git  `
 
 Seting the following environment variables in your environment.bash  
 
-`export MIMTPY_HOME=${RSMASINSAR_HOME}/sources/MimtPy'  
-`export PYTHONPATH=${PYTHONPATH}:${MIMTPY_HOME}`  
-`export PATH=${PATH}:${MIMTPY_HOME}/mimtpy`   
+`export MIMTPY_HOME=${RSMASINSAR_HOME}/sources/MimtPy  
+export PYTHONPATH=${PYTHONPATH}:${MIMTPY_HOME}  
+export PATH=${PATH}:${MIMTPY_HOME}/mimtpy`   
 
 ### 2. the packages used in MimtPy that should be installed
 
