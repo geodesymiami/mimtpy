@@ -78,7 +78,7 @@ The template example can be found in samples folder [mimtpyApp.template](https:/
 
 Inside the mimtpyApp.py it can generate displacement or velocity between two dates; do concatenation of adjacent trakcs; calculate horizontal and vertical data and plot figures. What's more, mimtpyApp.py can process one or more project as the same time, according to user's setting.
 
-## 3.2 other function in MimtPy
+## 3.2  Functions
 
 ### Singletrack scripts to prepare for modelling
 
