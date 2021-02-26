@@ -28,7 +28,7 @@ rasterio
 geopandas  
 osgeo  
 
-#### install Kite following its handbook
+#### install Kite following ``6.3``
 Kite  
 
 ## 2. Directory structure
@@ -146,9 +146,9 @@ git clone https://github.com/williamBarnhart/InSamp.git
 We are using the RELAX and BEAT packages. Here some installation notes:
 
 ### 6.1 RELAX
-It is very easy
+It is very easy. First downloading the RELAX package. Then runing the following command to use it.
 ```
-YUP
+source setup.sh
 ```
 ### 6.2 Bayesian Earthquake Analysis Tool (BEAT)
 You first need to install Pyrocko.
@@ -215,4 +215,23 @@ and make sure that they are the versions you expect.
 Please carefully study the documentation linked above for further help.
 
 Original error was: No module named 'numpy.core._multiarray_umath'
+
+Please note that after installation BEAT, you need to install fomosto-qseis、fomosto-qssp and fomosto-psgrn-pscmp to calculate Green Functions.
+Using `fomosto-qseis` as an example, the installation steps are:
+```
+git clone https://git.pyrocko.org/pyrocko/fomoto-qseis.git fomosto-qseis
+cd fomosto-qseis
+autoreconf -i  
+./configure
+make
+sudo make install
+```
+### 6.3 Kite 
+You first need to install Pyrocko.
+Then use `conda` and `pip` to install Kite. The installation commonds are:
+```
+conda install pyqtgraph
+pip install git+https://github.com/Turbo87/utm
+pip install git+https://github.com/pyrocko/kite
+
 ```
