@@ -28,7 +28,7 @@ rasterio
 geopandas  
 osgeo  
 
-#### install Kite following its handbook
+#### install Kite following ``6.3``
 Kite  
 
 ## 2. Directory structure
@@ -141,3 +141,97 @@ git clone https://github.com/pyrocko/kite.git
 
 for InSAMP:
 git clone https://github.com/williamBarnhart/InSamp.git
+
+## 6. Installation of modelling software
+We are using the RELAX and BEAT packages. Here some installation notes:
+
+### 6.1 RELAX
+It is very easy. First downloading the RELAX package. Then runing the following command to use it.
+```
+source setup.sh
+```
+### 6.2 Bayesian Earthquake Analysis Tool (BEAT)
+You first need to install Pyrocko.
+We tried the `conda` installation of Pyrocko and BEAT. It worked for pyrocko but we ran into a problem with BEAT. We got an error message regarding the `numpy` installation as shown below, which we need to resolve.  The `pip` installation works, but is more complex.
+
+For the `conda` installation we followed the manual of [Pyrocko.](https://git.pyrocko.org/pyrocko/pyrocko) and [BEAT](https://hvasbath.github.io/beat/installation.html).
+
+Here a quick summary of what I tried:
+
+```
+conda install -c pyrocko pyrocko
+conda create -n beat python=3.6
+conda activate beat
+source activate
+conda deactivate
+conda activate beat
+cd $RSMAS_INSAR/sources
+git clone https://github.com/hvasbath/beat
+conda install -n beat libgfortran openblas theano pygpu openmpi pandas numpy openmpi
+cat > ~/.theanorc   as described in manual (adjust -L flag to your conda BEAT environment)
+python3 test/numpy_test.py
+
+```
+But then the testing gave an error:
+```
+python3 test/numpy_test.py
+Traceback (most recent call last):
+  File "/scratch/05861/tg851601/code1/rsmas_insar/3rdparty/miniconda3/lib/python3.8/site-packages/numpy/core/__init__.py", line 22, in <module>
+    from . import multiarray
+  File "/scratch/05861/tg851601/code1/rsmas_insar/3rdparty/miniconda3/lib/python3.8/site-packages/numpy/core/multiarray.py", line 12, in <module>
+    from . import overrides
+  File "/scratch/05861/tg851601/code1/rsmas_insar/3rdparty/miniconda3/lib/python3.8/site-packages/numpy/core/overrides.py", line 7, in <module>
+    from numpy.core._multiarray_umath import (
+ModuleNotFoundError: No module named 'numpy.core._multiarray_umath'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "test/numpy_test.py", line 1, in <module>
+    import numpy as np
+  File "/scratch/05861/tg851601/code1/rsmas_insar/3rdparty/miniconda3/lib/python3.8/site-packages/numpy/__init__.py", line 145, in <module>
+    from . import core
+  File "/scratch/05861/tg851601/code1/rsmas_insar/3rdparty/miniconda3/lib/python3.8/site-packages/numpy/core/__init__.py", line 48, in <module>
+    raise ImportError(msg)
+ImportError: 
+
+IMPORTANT: PLEASE READ THIS FOR ADVICE ON HOW TO SOLVE THIS ISSUE!
+
+Importing the numpy C-extensions failed. This error can happen for
+many reasons, often due to issues with your setup or how NumPy was
+installed.
+
+We have compiled some common reasons and troubleshooting tips at:
+
+    https://numpy.org/devdocs/user/troubleshooting-importerror.html
+ ```
+
+Please note and check the following:
+
+  * The Python version is: Python3.6 from "/scratch/05861/tg851601/code1/rsmas_insar/3rdparty/miniconda3/envs/beat/bin/python3"
+  * The NumPy version is: "1.20.1"
+
+and make sure that they are the versions you expect.
+Please carefully study the documentation linked above for further help.
+
+Original error was: No module named 'numpy.core._multiarray_umath'
+
+Please note that after installation BEAT, you need to install fomosto-qseis、fomosto-qssp and fomosto-psgrn-pscmp to calculate Green Functions.
+Using `fomosto-qseis` as an example, the installation steps are:
+```
+git clone https://git.pyrocko.org/pyrocko/fomoto-qseis.git fomosto-qseis
+cd fomosto-qseis
+autoreconf -i  
+./configure
+make
+sudo make install
+```
+### 6.3 Kite 
+You first need to install Pyrocko.
+Then use `conda` and `pip` to install Kite. The installation commonds are:
+```
+conda install pyqtgraph
+pip install git+https://github.com/Turbo87/utm
+pip install git+https://github.com/pyrocko/kite
+
+```
