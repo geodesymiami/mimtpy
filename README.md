@@ -88,6 +88,8 @@ Inside the mimtpyApp.py it can generate displacement or velocity between two dat
 
 - save_geodmod.py: generate files used by Geodmod software.
 
+- convert_Kite2GBIS.py: convert Kite scene to GBIS input data.
+
 ### Other singletrack scripts
 
 - HDFEOS_to_geotiff.py: transferring S1**.he5 file into *.h5 and *.geotiff files based on given dataset name.
