@@ -16,12 +16,22 @@ import re
 import h5py
 
 import matplotlib.pyplot as plt
-from mintpy.utils import readfile, writefile
+from mintpy.utils import readfile, writefile, ptime
+from mintpy.objects import (
+    giantIfgramStack, 
+    giantTimeseries, 
+    ifgramStack, 
+    timeseries, 
+    HDFEOS,
+)
+
 from mimtpy.objects.profiles import Profile
 import mimtpy.objects.profiles as profiles
 
 ######################################################################################
 EXAMPLE = """example:
+    Note:
+    if you want to make sure the REF is also correct, please make the master image is at the east of the slave image!
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5  --rewrite_slave --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
 
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/geo_velocity.h5 $SCRATCHDIR/BogdSenDT106/mintpy/geo_velocity.h5 --output mosaic --outdir /data/lxr/insarlab/SCRATCHDIR/BalochistanSenDT/cumulative/
@@ -33,6 +43,9 @@ EXAMPLE = """example:
     track_offset.py $SCRATCHDIR/BogdSenDT33/mintpy/inputs/geo_geometryRadar.h5 $SCRATCHDIR/BogdSenDT106/mintpy/inputs/geo_geometryRadar.h5 -ot ave --output Bogd_mosaic --outdir ./
 
     track_offset.py ../../SpainSenAT147/mintpy/timeseries/timeseries_demErr_ERA5.h5 ../../SpainSenAT74/mintpy/timeseries/timeseries_demErr_ERA5.h5 --output timeseries_AT147_74 --outdir ./
+
+    track_offset.py ../../KokoxiliBigSenAT114/velocity/velocity_lat30_41.h5 ../../KokoxiliBigSenAT41/velocity/velocity_lat30_41.h5 --output steeks --outdir ./ --plotpair -g ../../KokoxiliBigSenAT114/geometry/geo_lat30_41.h5 --pro_num 5
+
 """
 
 def create_parser():
@@ -248,6 +261,10 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     m_overlay = m_data[m_row0 : m_row0 + overlay_rows,m_colm0 : m_colm0 + overlay_colms]
     s_overlay = s_data[s_row0 : s_row0 + overlay_rows,s_colm0 : s_colm0 + overlay_colms]
 
+    # calculate the mean difference between master and slave overlay region
+    ms_difference = np.nanmean(np.abs(m_overlay - s_overlay))
+    print('the difference between master and slave overlay region is %f' % ms_difference)
+    
     # calculate values in overlay region
     mosaic_freq = np.ones((overlay_rows,overlay_colms),dtype = np.float32)
     m_over_pos = np.isnan(m_overlay)
@@ -274,6 +291,7 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     
     # calculated final mosaic_overlay
     mosaic_overlay = mosaic_overlay_tmp / mosaic_freq
+
     
     # generate mosaic dataset
     mosaic_rows = m_rows + s_rows - overlay_rows
@@ -321,7 +339,28 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     mosaic_atr['WIDTH'] = mosaic_colms
     mosaic_atr['X_FIRST'] = mosaic_lon0
     mosaic_atr['Y_FIRST'] = mosaic_lat0
-    
+    mosaic_atr['Y_FIRST'] = mosaic_lat0
+    mosaic_atr['Y_FIRST'] = mosaic_lat0
+    mosaic_atr['Y_FIRST'] = mosaic_lat0
+    if m_atr['ORBIT_DIRECTION'] == 'DESCENDING':
+        mosaic_atr['LAT_REF1'] = m_atr['LAT_REF1']
+        mosaic_atr['LON_REF1'] = m_atr['LON_REF1']
+        mosaic_atr['LAT_REF3'] = m_atr['LAT_REF3']
+        mosaic_atr['LON_REF3'] = m_atr['LON_REF3']
+        mosaic_atr['LAT_REF2'] = s_atr['LAT_REF2']
+        mosaic_atr['LON_REF2'] = s_atr['LON_REF2']
+        mosaic_atr['LAT_REF4'] = s_atr['LAT_REF4']
+        mosaic_atr['LON_REF4'] = s_atr['LON_REF4']
+    else:
+        mosaic_atr['LAT_REF1'] = s_atr['LAT_REF1']
+        mosaic_atr['LON_REF1'] = s_atr['LON_REF1']
+        mosaic_atr['LAT_REF3'] = s_atr['LAT_REF3']
+        mosaic_atr['LON_REF3'] = s_atr['LON_REF3']
+        mosaic_atr['LAT_REF2'] = m_atr['LAT_REF2']
+        mosaic_atr['LON_REF2'] = m_atr['LON_REF2']
+        mosaic_atr['LAT_REF4'] = m_atr['LAT_REF4']
+        mosaic_atr['LON_REF4'] = m_atr['LON_REF4']
+        
     if inps.plotpair:
         outdir = inps.outdir[0]
         # read geometry data for elevation matrix
@@ -331,7 +370,7 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
 
         # calculate over_lat1 and over_lon1
         over_lat1 = over_lat0 + (overlay_rows - 1) * mosaic_lat_step
-        over_lon1 = over_lon0 + (overlay_colms - 1) * mosaic_lon_step     
+        over_lon1 = over_lon0 + (overlay_colms - 1) * mosaic_lon_step
         # calculate angle for the track
         polygon = m_atr['scene_footprint']
         lonlats = re.findall(r'([\d+\.]+)',polygon)
@@ -377,7 +416,11 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
 
             # process multiprofiles
             profile_dict_final, profile_dem_final = profiles.profile_average(inps.pro_num, profile_dict_list, profile_dem_list)
-            profiles.profiles_plot(profile_dict_final, profile_dem_final, m_name, s_name, outdir)             
+            if mm_atr['FILE_TYPE'] == 'velocity':
+                filetype = 'velocity'
+            else:
+                filetype = 'displacement'
+            profiles.profiles_plot(profile_dict_final, profile_dem_final, m_name, s_name, filetype, outdir)             
             print('the mean difference between master and slave data is %f' % profile_dict_final[-1]['data'])
 
     return mosaic_data, mosaic_atr
@@ -409,6 +452,24 @@ def judge_data_datasets(m_atr):
         typeflag = 0
 
     return typeflag
+
+def date_match(m_dateList, s_dateList, m_dim):
+    """match the date in master and slave timeseries dataset"""
+    m_datevector = ptime.date_list2vector(m_dateList)[1]
+    s_datevector = ptime.date_list2vector(s_dateList)[1]
+
+    m_Date = []
+    s_Date = []
+    for i in np.arange(m_dim):
+        date = m_datevector[i]
+        date_sub = np.abs(np.array(s_datevector) - date)
+        # select object date based on the difference between two dates is less than 7 days [0.02 in vector]
+        date_obj = date_sub[date_sub < 0.02]
+        if date_obj.size != 0:
+            m_Date.append(m_dateList[i])
+            s_Date.append(np.array(s_dateList)[date_sub < 0.02][0])
+    
+    return m_Date, s_Date
         
 ######################################################################################
 def main(iargs=None):
@@ -418,7 +479,7 @@ def main(iargs=None):
     # master and slave data attribute
     m_atr = readfile.read_attribute("".join(inps.master))
     s_atr = readfile.read_attribute("".join(inps.slave))
-    
+
     # judge file type
     typeflag = judge_data_datasets(m_atr)
     
@@ -437,7 +498,8 @@ def main(iargs=None):
         write_mosaic(inps,mosaic_data, mosaic_atr)
             
     elif typeflag == 1:
-        dataslice = ['azimuthAngle', 'height', 'incidenceAngle', 'latitude', 'longitude', 'shadowMask', 'slantRangeDistance']
+        #dataslice = ['azimuthAngle', 'height', 'incidenceAngle', 'latitude', 'longitude', 'shadowMask', 'slantRangeDistance']
+        dataslice = ['azimuthAngle', 'height', 'incidenceAngle', 'latitude', 'longitude', 'slantRangeDistance']
         m_file = "".join(inps.master)
         s_file = "".join(inps.slave)
         
@@ -464,9 +526,15 @@ def main(iargs=None):
         m_data = readfile.read(m_file, datasetName='timeseries')[0]
         s_data = readfile.read(s_file, datasetName='timeseries')[0]
         
-        bperp_date = h5py.File(m_file,'r')
-        m_bperp = bperp_date['bperp']
-        m_date = bperp_date['date']
+        m_bperp_date = h5py.File(m_file,'r')
+        m_bperp = m_bperp_date['bperp']
+        #m_date = m_bperp_date['date']
+        m_dateList = timeseries(m_file).get_date_list()
+
+        s_bperp_date = h5py.File(s_file,'r')
+        s_bperp = s_bperp_date['bperp']
+        #s_date = s_bperp_date['date']
+        s_dateList = timeseries(s_file).get_date_list()
 
         # judging whether master and slave data have same dimension
         m_dim = m_data.shape[0]
@@ -475,27 +543,31 @@ def main(iargs=None):
         s_rows, s_colms = s_data.shape[1:3]
         mosaic_dataset = dict()
 
-        if m_dim != s_dim:
-            raise Exception('the dimension of master data and slave data is not consistent! Please check!')
-        else:
-            offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data[0,:,:],s_atr,s_data[0,:,:],typeflag)
-            mosaic_rows = m_rows + s_rows - overlay_rows
-            mosaic_colms = m_colms + s_colms - overlay_colms
-            mosaic_timeseries = np.empty(shape=(m_dim, mosaic_rows, mosaic_colms))
+        m_Date, s_Date = date_match(m_dateList, s_dateList, m_dim)
+        mosaic_dim = len(m_Date)
 
-            for i in np.arange(m_dim):
-                # calculated offset and mosaic two tracks
-                offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data[i,:,:],s_atr,s_data[i,:,:],typeflag)
-                s_data_offset = rewrite_slave(inps,offset,s_atr,s_data[i,:,:])
+        offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data[0,:,:],s_atr,s_data[0,:,:],typeflag)
+        mosaic_rows = m_rows + s_rows - overlay_rows
+        mosaic_colms = m_colms + s_colms - overlay_colms
+        mosaic_timeseries = np.empty(shape=(mosaic_dim, mosaic_rows, mosaic_colms))
+        
+        i = 0
+        for m_date,s_date in zip(m_Date, s_Date):
+            # calculated offset and mosaic two tracks
+            master_data = readfile.read(m_file, datasetName=m_date)[0]
+            slave_data = readfile.read(s_file, datasetName=s_date)[0]
+            offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,master_data,s_atr,slave_data,typeflag)
+            s_data_offset = rewrite_slave(inps,offset,s_atr,slave_data)
                  
-                print('prepare mosaicing:\n')
-                mosaic_timeseries[i,:,:], mosaic_atr = mosaic_tracks(inps,m_atr,m_data[i,:,:],s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
-            
-            mosaic_dataset['bperp'] = m_bperp
-            mosaic_dataset['date'] = m_date
-            mosaic_dataset['timeseries'] = mosaic_timeseries
+            print('prepare mosaicing:\n')
+            mosaic_timeseries[i,:,:], mosaic_atr = mosaic_tracks(inps,m_atr,master_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+            i = i + 1
+    
+        #mosaic_dataset['bperp'] = np.array(m_bperp, dtype=np.float32)
+        mosaic_dataset['date'] = np.array(m_Date, dtype=np.string_)
+        mosaic_dataset['timeseries'] = mosaic_timeseries
 
-            write_mosaic(inps,mosaic_dataset, mosaic_atr)
+        write_mosaic(inps,mosaic_dataset, mosaic_atr)
                   
 ######################################################################################
 if __name__ == '__main__':
