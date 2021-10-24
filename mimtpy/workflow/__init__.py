@@ -14,11 +14,9 @@ __all__=[
      'generate_horzvert',
      'H5UNW_to_geotiff',
      'save_geodmod',
-     'extract_points_value',
      'synthetic_S1',
      'subtract_h5',
-     'gridsearch_ramps_synthetic',
-     'gridsearch_ramps_relax' 
+     'gridsearch_ramps_relax', 
 ]
 
 root_module = Path(__file__).parent.parent.name #mimtpy
