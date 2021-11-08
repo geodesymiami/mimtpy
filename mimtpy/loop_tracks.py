@@ -60,6 +60,7 @@ def concatenation_chunks(pro_name, track_name):
     print(pro_name)
     print(track_name)
     dataset_dirs, chunk_number = search_chunks_number(scratch_dir, pro_name, track_name)
+    chunk_number.sort()   
     
     # extract velocity for each dataset
     for dataset in dataset_dirs:
