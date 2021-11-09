@@ -20,6 +20,7 @@ from mimtpy.utils import multitrack_utilities as mu
 ######################################################################################
 EXAMPLE = """example:
     loop_tracks.py --project KokoxiliBig --tracks SenDT19 SenDT150 SenDT48
+    loop_tracks.py --project KokoxiliBig --tracks SenDT19 SenDT150 SenDT48 --chunk
 """
 
 def create_parser():
@@ -30,6 +31,8 @@ def create_parser():
     parser.add_argument('--project', nargs=1, type=str, help='project name\n')
 
     parser.add_argument('--tracks', type=str, nargs='+', help='tracks name\n')
+    
+    parser.add_argument('--chunk', action='store_true', default=False, help='whether concatenate chunks for each track \n')
 
     return parser
 
@@ -95,7 +98,7 @@ def concatenation_chunks(pro_name, track_name):
 
     # concatenate chunks for one track
     # generate output dir 
-    track_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' +pro_name + track_name + '/mimtpy/' + 'velocity/'))
+    track_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' +pro_name[0: -5] + 'Big' + track_name + '/mimtpy/' + 'velocity/'))
     if not os.path.isdir(track_dir):
         os.makedirs(track_dir)
     print('\nthe output dir for concatenation is {}.\n'.format(track_dir))
@@ -123,12 +126,20 @@ def concatenation_chunks(pro_name, track_name):
         print('track_offset.py',scp_args)
         mimtpy.track_offset.main(scp_args.split())   
 
+    for dataset in dataset_dirs:
+        os.chdir(dataset)
+        print('\nGo to project dir:', dataset)
+        # delete velocity folder
+        print('\n Delete velocity folder from %s' % dataset)
+        outdir = os.path.abspath(os.path.join(dataset, 'velocity'))
+        shutil.rmtree(outdir)
+ 
 def concatenation_tracks(track_names, pro_name):
     velocity_track = 'velocity_track.h5'
  
     # generate output dir
     track_name = track_names[0]
-    pro_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' +pro_name + track_name[0:5] + '/mimtpy/' + 'velocity/'))
+    pro_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' + pro_name[0: -1] + 'Big' +  track_name[0:5] + '/mimtpy/' + 'velocity/'))
     if not os.path.isdir(pro_dir):
         os.makedirs(pro_dir)
     print('\nthe output dir for concatenation is {}.\n'.format(pro_dir))
@@ -160,8 +171,9 @@ def main(iargs=None):
     # firstly concatenation chunks of each track
     # the output dir is project_name/mintpy/velocity/, for example: KokoxiliBigSenDT19/mintpy/velocity/
     # make sure the existence for project folders
-    for track_name in track_names:
-        concatenation_chunks(pro_name, track_name)
+    if inps.chunk:
+        for track_name in track_names:
+            concatenation_chunks(pro_name, track_name)
 
     # secondly concatenation tracks 
     concatenation_tracks(track_names, pro_name)
