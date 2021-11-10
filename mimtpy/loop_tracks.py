@@ -139,14 +139,14 @@ def concatenation_tracks(track_names, pro_name):
  
     # generate output dir
     track_name = track_names[0]
-    pro_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' + pro_name[0: -1] + 'Big' +  track_name[0:5] + '/mimtpy/' + 'velocity/'))
+    pro_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' + pro_name[0: -5] + 'Big' +  track_name[0:5] + '/mimtpy/' + 'velocity/'))
     if not os.path.isdir(pro_dir):
         os.makedirs(pro_dir)
     print('\nthe output dir for concatenation is {}.\n'.format(pro_dir))
     
     track_number = len(track_names)
     temp_Files = []
-    pro_dir_tmp = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' +pro_name))
+    pro_dir_tmp = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' +pro_name[0: -1] + 'Big'))
     for i in np.arange(track_number - 1):  
         if i == 0:
             temp_name = 'velocity_' + track_names[0] + '_' + track_names[1]
