@@ -521,30 +521,31 @@ def check_exist_grib_file(gfile_list, print_msg=True):
                 print('------------------------------------------------------------------------------')
     return gfile_exist
 
-def check_subset_grib_file(grib_files):
+def check_subset_grib_file(grib_files, weather_dir):
     """Check whether grib file to be used is a subset of the exist grib file"""
     # check the $WEATHERDIR data and get all the downloaded data
     grib_file_exist = []
-    ERA5_DIR = os.getenv('WEATHER_DIR')
+    ERA5_DIR = weather_dir
+    #ERA5_DIR = os.getenv('WEATHER_DIR')
     path_list = os.listdir(os.path.join(ERA5_DIR,'ERA5'))
     for vfile in path_list:
         if vfile.split('.')[1] == 'grb':
             grib_file_exist.append(vfile)
-    
-    grib_files_uni = list(np.unique([os.path.split(x)[1][0:20] for x in grib_files]))
-    grib_files_date = [os.path.split(x)[1][21:29] for x in grib_files]
 
-    grib_exist_uni = np.unique([os.path.split(xx)[1][0:20] for xx in grib_file_exist])
-    grib_exist_date = [os.path.split(xx)[1][21:29] for xx in grib_file_exist]
-    grib_exist_prefix = [os.path.split(xx)[1][0:20] for xx in grib_file_exist]
+    grib_files_uni = list(np.unique(['_'.join(os.path.split(x)[1].split('_')[0:5]) for x in grib_files]))
+    grib_files_date = [os.path.split(x)[1].split('_')[5] for x in grib_files]
 
-    lat_grib = np.array([np.array([int(tmp[6:8]) for tmp in grib_exist_uni]).T, np.array([int(tmp[10:12]) for tmp in grib_exist_uni]).T]).T
-    lon_grib = np.array([np.array([int(tmp[14:16]) for tmp in grib_exist_uni]).T, np.array([int(tmp[18:20]) for tmp in grib_exist_uni]).T]).T
+    grib_exist_uni = np.unique(['_'.join(os.path.split(xx)[1].split('_')[0:5]) for xx in grib_file_exist])
+    grib_exist_date = [os.path.split(xx)[1].split('_')[5] for xx in grib_file_exist]
+    grib_exist_prefix = ['_'.join(os.path.split(xx)[1].split('_')[0:5]) for xx in grib_file_exist]
 
-    lat_grib_min = int(grib_files_uni[0][6:8])
-    lat_grib_max = int(grib_files_uni[0][10:12])
-    lon_grib_min = int(grib_files_uni[0][14:16])
-    lon_grib_max = int(grib_files_uni[0][18:20])
+    lat_grib = np.array([np.array([int(tmp.split('_')[1][1:]) for tmp in grib_exist_uni]).T, np.array([int(tmp.split('_')[2][1:]) for tmp in grib_exist_uni]).T]).T
+    lon_grib = np.array([np.array([int(tmp.split('_')[3][1:]) for tmp in grib_exist_uni]).T, np.array([int(tmp.split('_')[4][1:]) for tmp in grib_exist_uni]).T]).T
+
+    lat_grib_min = int(grib_files_uni[0].split('_')[1][1:])
+    lat_grib_max = int(grib_files_uni[0].split('_')[2][1:])
+    lon_grib_min = int(grib_files_uni[0].split('_')[3][1:])
+    lon_grib_max = int(grib_files_uni[0].split('_')[4][1:])
 
     # compare and decide whether it is subset
     flag_lat = []
@@ -569,9 +570,9 @@ def check_subset_grib_file(grib_files):
             grib_exist_subset_date = list(np.array(grib_exist_date)[positions])
             if grib_exist_subset_date != None:
                 for grib in grib_files:
-                    if os.path.split(grib)[1][21:29] in grib_exist_subset_date:
+                    if os.path.split(grib)[1].split('_')[5] in grib_exist_subset_date:
                         grib_files_nochange = list(set(grib_files_nochange).difference(set([grib])))
-                        grib = grib.replace(os.path.split(grib)[1][0:20], grib_subset)
+                        grib = grib.replace('_'.join(os.path.split(grib)[1].split('_')[0:5]), grib_subset)
                         grib_files_change.append(grib)
     grib_files_final = grib_files_nochange + grib_files_change
     
@@ -633,7 +634,7 @@ def check_pyaps_account_config(tropo_model):
     return
 
 
-def dload_grib_files(grib_files, tropo_model='ERA5', snwe=None):
+def dload_grib_files(grib_files, weather_dir, tropo_model='ERA5', snwe=None):
     """Download weather re-analysis grib files using PyAPS
     Parameters: grib_files : list of string of grib files
     Returns:    grib_files : list of string
@@ -642,14 +643,14 @@ def dload_grib_files(grib_files, tropo_model='ERA5', snwe=None):
     print('downloading weather model data using PyAPS ...')
 
     # check subset added by lxr 
-    grib_files = check_subset_grib_file(grib_files)
+    grib_files = check_subset_grib_file(grib_files, weather_dir)
     # Get date list to download (skip already downloaded files)
     grib_files_exist = check_exist_grib_file(grib_files, print_msg=True)
     grib_files2dload = sorted(list(set(grib_files) - set(grib_files_exist)))
     date_list2dload = [str(re.findall('\d{8}', os.path.basename(i))[0]) for i in grib_files2dload]
     print('number of grib files to download: %d' % len(date_list2dload))
     print('------------------------------------------------------------------------------\n')
-
+    
     # Download grib file using PyAPS
     if len(date_list2dload) > 0:
         hour = re.findall('\d{8}[-_]\d{2}', os.path.basename(grib_files2dload[0]))[0].replace('-', '_').split('_')[1]
@@ -901,7 +902,8 @@ def main(iargs=None):
     get_grib_info(inps)
 
     # download
-    inps.grib_files = dload_grib_files(inps.grib_files, 
+    inps.grib_files = dload_grib_files(inps.grib_files,
+                                       inps.weather_dir, 
                                        tropo_model=inps.tropo_model,
                                        snwe=inps.snwe)
 
