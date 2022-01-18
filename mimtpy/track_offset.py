@@ -448,6 +448,8 @@ def judge_data_datasets(m_atr):
         typeflag = 1
     elif file_type == 'timeseries':
         typeflag = 2
+    elif file_type.find('coherence') != -1:
+        typeflag = 3
     else:
         typeflag = 0
 
@@ -519,7 +521,7 @@ def main(iargs=None):
             mosaic_dataset[dslice] = mosaic_data 
             print('finish mosaic %s' % dslice)       
         write_mosaic(inps,mosaic_dataset, mosaic_atr)
-    else:
+    elif typeflag == 2:
         m_file = "".join(inps.master)
         s_file = "".join(inps.slave)
 
@@ -568,6 +570,22 @@ def main(iargs=None):
         mosaic_dataset['timeseries'] = mosaic_timeseries
 
         write_mosaic(inps,mosaic_dataset, mosaic_atr)
+    elif typeflag == 3:
+        m_file = "".join(inps.master)
+        s_file = "".join(inps.slave)
+        
+        mosaic_dataset = dict()
+        
+        m_data = readfile.read(m_file)[0]
+        s_data = readfile.read(s_file)[0]
+        # calculated overlay region
+        m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data,s_atr,s_data,typeflag)
+                
+        print('prepare mosaicing for: %s\n' % dslice)
+        mosaic_data, mosaic_atr = mosaic_tracks(inps,m_atr,m_data,s_atr,s_data,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
+        print('finish mosaic %s' % dslice)       
+        write_mosaic(inps,mosaic_dataset, mosaic_atr)
+        
                   
 ######################################################################################
 if __name__ == '__main__':
