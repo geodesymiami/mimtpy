@@ -291,7 +291,6 @@ def mosaic_tracks(inps,m_atr,m_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_
     
     # calculated final mosaic_overlay
     mosaic_overlay = mosaic_overlay_tmp / mosaic_freq
-
     
     # generate mosaic dataset
     mosaic_rows = m_rows + s_rows - overlay_rows
@@ -455,23 +454,38 @@ def judge_data_datasets(m_atr):
 
     return typeflag
 
-def date_match(m_dateList, s_dateList, m_dim):
+def date_match(m_dateList, s_dateList, m_dim, s_dim, m_bperp, s_bperp):
     """match the date in master and slave timeseries dataset"""
     m_datevector = ptime.date_list2vector(m_dateList)[1]
     s_datevector = ptime.date_list2vector(s_dateList)[1]
 
     m_Date = []
     s_Date = []
-    for i in np.arange(m_dim):
-        date = m_datevector[i]
-        date_sub = np.abs(np.array(s_datevector) - date)
-        # select object date based on the difference between two dates is less than 7 days [0.02 in vector]
-        date_obj = date_sub[date_sub < 0.02]
-        if date_obj.size != 0:
-            m_Date.append(m_dateList[i])
-            s_Date.append(np.array(s_dateList)[date_sub < 0.02][0])
-    
-    return m_Date, s_Date
+    bperp = []
+
+    if m_dim <= s_dim:
+        for i in np.arange(m_dim):
+            date = m_datevector[i]
+            date_sub = np.abs(np.array(s_datevector) - date)
+            # select object date based on the difference between two dates is less than 7 days [0.02 in vector]
+            date_obj = date_sub[date_sub < 0.02]
+            if date_obj.size != 0:
+                m_Date.append(m_dateList[i])
+                bperp.append(m_bperp[i])
+                s_Date.append(np.array(s_dateList)[date_sub < 0.02][0])
+        date_final = m_Date
+    else:
+        for i in np.arange(s_dim):
+            date = s_datevector[i]
+            date_sub = np.abs(np.array(m_datevector) - date)
+            # select object date based on the difference between two dates is less than 7 days [0.02 in vector]
+            date_obj = date_sub[date_sub < 0.02]
+            if date_obj.size != 0:
+                s_Date.append(s_dateList[i])
+                bperp.append(s_bperp[i])
+                m_Date.append(np.array(m_dateList)[date_sub < 0.02][0])
+        date_final = s_Date
+    return date_final, m_Date, s_Date, bperp
         
 ######################################################################################
 def main(iargs=None):
@@ -537,7 +551,7 @@ def main(iargs=None):
         s_bperp = s_bperp_date['bperp']
         #s_date = s_bperp_date['date']
         s_dateList = timeseries(s_file).get_date_list()
-
+        
         # judging whether master and slave data have same dimension
         m_dim = m_data.shape[0]
         m_rows, m_colms = m_data.shape[1:3]
@@ -545,7 +559,7 @@ def main(iargs=None):
         s_rows, s_colms = s_data.shape[1:3]
         mosaic_dataset = dict()
 
-        m_Date, s_Date = date_match(m_dateList, s_dateList, m_dim)
+        date_final, m_Date, s_Date, bperp = date_match(m_dateList, s_dateList, m_dim, s_dim, m_bperp, s_bperp)
         mosaic_dim = len(m_Date)
 
         offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows, overlay_colms = calculate_overlay(inps,m_atr,m_data[0,:,:],s_atr,s_data[0,:,:],typeflag)
@@ -565,10 +579,11 @@ def main(iargs=None):
             mosaic_timeseries[i,:,:], mosaic_atr = mosaic_tracks(inps,m_atr,master_data,s_atr,s_data_offset,m_row0,m_colm0,s_row0,s_colm0,over_lat0,over_lon0,overlay_rows,overlay_colms)
             i = i + 1
     
-        #mosaic_dataset['bperp'] = np.array(m_bperp, dtype=np.float32)
-        mosaic_dataset['date'] = np.array(m_Date, dtype=np.string_)
+        mosaic_dataset['bperp'] = np.array(bperp, dtype=np.float32)
+        mosaic_dataset['date'] = np.array(date_final, dtype=np.string_)
         mosaic_dataset['timeseries'] = mosaic_timeseries
 
+        mosaic_atr['REF_DATE'] = str(date_final[0])
         write_mosaic(inps,mosaic_dataset, mosaic_atr)
     elif typeflag == 3:
         m_file = "".join(inps.master)
