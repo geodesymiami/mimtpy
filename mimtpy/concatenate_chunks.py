@@ -119,8 +119,6 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir):
             bperp_date = h5py.File(HDFEOS_file,'r')
             data_date = np.array(bperp_date['/HDFEOS/GRIDS/timeseries/observation/date']).tolist()
             date_chunks.append(data_date)
-    date_intersection = list(set(date_chunks[0]).intersection(*date_chunks[1:]))
-    date_intersection.sort()
     if datatype == 'timeseries':
         #mmin_sceneNo = 10000
         #for dataset in dataset_dirs:
@@ -135,6 +133,8 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir):
         #        mmin_sceneNo = len(date_intersection)
         #        date_record = date_intersection
         #date_record.sort()
+        date_intersection = list(set(date_chunks[0]).intersection(*date_chunks[1:]))
+        date_intersection.sort()
         for dataset in dataset_dirs:
             os.chdir(dataset)
             # creat output dir
