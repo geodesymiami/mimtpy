@@ -46,7 +46,7 @@ def create_parser():
                         'Include the uppler left corner of the first pixel' + 
                         'and the lower right corner of the last pixel')
 
-    parser.add_argument('--outdir',dest='outdir',nargs='?',default=os.getenv('SCRATCHDIR'), help='output directory')
+    parser.add_argument('--outdir',type=str,nargs='?',default='./', help='output directory')
 
     return parser
 
@@ -161,7 +161,7 @@ def extract_data(inps,dataset,outdir):
             dsDict['bperp'] = data_bperp
             dsDict['date'] = data_date
             dsDict['timeseries'] = data_timeseries
-            atr['FILE_TYPE'] = attr 
+            atr['FILE_TYPE'] = 'timeseries' 
             writefile.write(dsDict, out_file=outfile, metadata=atr)    
             # run timeseries2velocity.py
             output_vel = 'velocity_' + date1 + '_' + date2 + '.h5'
@@ -216,7 +216,7 @@ def geocode(data,data_name,atr,outdir):
     ncols = samples
     xres = lon_step
     yres = abs(lat_step)
-    
+   
     # output
     output_tif = outdir +'/' + data_name + '.tiff'
     print('Start calculating geotiff data {}.\n'.format(output_tif))
@@ -263,7 +263,7 @@ def main(iagrs=None):
     # read HDFEOS file
     dataset = located_dataset_based_attribut(inps)
    
-    outdir = "".join(inps.outdir) 
+    outdir = inps.outdir[0] 
     data,data_name,atr = extract_data(inps,dataset,outdir)
     # bbox
     if inps.SNWE == None:
