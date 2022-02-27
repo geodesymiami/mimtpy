@@ -10,7 +10,7 @@ import importlib
 __all__=[
      'HDFEOS_to_geotiff',
      'plot_geotiff',
-     'track_offset',
+     'concatenate_offset',
      'generate_horzvert',
      'H5UNW_to_geotiff',
      'save_geodmod',
