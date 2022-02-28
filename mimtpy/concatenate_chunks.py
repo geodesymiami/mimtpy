@@ -238,7 +238,8 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps):
             dsDict['bperp'] = data_bp
             dsDict['date'] = date_intersection
             dsDict['timeseries'] = data_ts
-            atr['FILE_TYPE'] = 'timeseries' 
+            atr['FILE_TYPE'] = 'timeseries'
+            atr['REF_DATE'] = str(date_intersection.astype(np.int)[0])
             writefile.write(dsDict, out_file=outfile, metadata=atr)     
                 
     # concatenate chunks for one track
