@@ -73,25 +73,11 @@ def cmd_line_parse(iargs=None):
     
     return inps
 
-def chunks_number(chunks,file_dir):
-    
-    chunk_number = []
-    L = []
-    
-    for chunk in chunks:
-        ret2 = re.findall(r'[A-Za-z]+|[\d.]+', chunk)
-        chunk_number.append(ret2[1]) 
-        L.append(os.path.join(file_dir, chunk, 'mintpy'))
-    
-    return L, chunk_number
 
 def concatenation_chunks(chunks, project, datatype, pro_outdir, inps):
-    #dataset_dirs = []
-    # search for chunks number and name
-    scratch_dir = os.getenv('SCRATCHDIR')
-    dataset_dirs, chunk_number = chunks_number(chunks, scratch_dir)
+    dataset_dirs = [os.path.realpath(chunk) + "/mintpy" for chunk in chunks]
     dataset_dirs.sort()
-    chunk_number.sort()   
+    chunk_number = [re.findall(r'[A-Za-z]+|[\d.]+', os.path.basename(chunk))[1] for chunk in chunks]
    
     date_chunks = []
     # extract velocity/coherence for each dataset
@@ -239,12 +225,12 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps):
             dsDict['date'] = date_intersection
             dsDict['timeseries'] = data_ts
             atr['FILE_TYPE'] = 'timeseries'
-            atr['REF_DATE'] = str(date_intersection.astype(np.int)[0])
+            atr['REF_DATE'] = str(date_intersection.astype(np.int)[0]) 
             writefile.write(dsDict, out_file=outfile, metadata=atr)     
                 
     # concatenate chunks for one track
     # generate output dir 
-    track_dir = os.path.abspath(os.path.join(os.getenv('SCRATCHDIR') + '/' + project + '/' + pro_outdir + '/' + datatype + '/'))
+    track_dir = os.path.abspath(os.path.join(project + '/' + pro_outdir + '/' + datatype + '/'))
     if not os.path.isdir(track_dir):
         os.makedirs(track_dir)
     print('the output dir for concatenation is {}.'.format(track_dir))
@@ -507,6 +493,12 @@ def main(iargs=None):
     else: 
         chunks = inps.chunks
         project = inps.project[0]
+    # all trans to full path
+    chunks = [os.path.realpath(c) if c[0] != '/' else c for c in chunks]
+    project = os.path.realpath(project) if project[0] != '/' else project
+    # path validation
+    for c in chunks:
+        assert(os.path.isdir(c)), f"error chunk path `{c}`"
     
     # firstly concatenation chunks of each track
     # the output dir is project_name/mintpy/velocity/, for example: KokoxiliBigSenDT19/mintpy/velocity/
@@ -527,8 +519,7 @@ def main(iargs=None):
                 print('Error for datatype of %s' % dtype)
         
         # write concatenated HDFEOS file
-        scratch_dir = os.getenv('SCRATCHDIR')
-        pro_dir = os.path.abspath(os.path.join(scratch_dir, project))
+        pro_dir = os.path.abspath(project)
         ts_data = pro_dir + '/mimtpy/timeseries/timeseries_track.h5'
         Tcoh_data = pro_dir + '/mimtpy/temporalCoherence/temporalCoherence_track.h5'
         Scoh_data = pro_dir + '/mimtpy/avgSpatialCoherence/avgSpatialCoherence_track.h5'
