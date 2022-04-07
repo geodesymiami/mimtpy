@@ -266,16 +266,16 @@ def main(iagrs=None):
     outdir = inps.outdir[0] 
     data,data_name,atr = extract_data(inps,dataset,outdir)
     # bbox
-    if inps.SNWE == None:
-        print('\n generate geotiff')
-        #geocode data
-        geocode(data,data_name,atr,outdir)    
-    else:
-        row_No,sample_No,rows,samples = extract_data_based_bbox(inps)
-        data_bbox = data[row_No : row_No + rows,sample_No : sample_No + samples]
-        data_name_bbox = data_name + '_subarea'
-        #geocode data
-        geocode_bbox(data_bbox,data_name_bbox,inps,atr,outdir)    
+    #if inps.SNWE == None:
+    #    print('\n generate geotiff')
+    #    #geocode data
+    #    geocode(data,data_name,atr,outdir)    
+    #else:
+    #    row_No,sample_No,rows,samples = extract_data_based_bbox(inps)
+    #    data_bbox = data[row_No : row_No + rows,sample_No : sample_No + samples]
+    #    data_name_bbox = data_name + '_subarea'
+    #    #geocode data
+    #    geocode_bbox(data_bbox,data_name_bbox,inps,atr,outdir)    
 ######################################################################################
 if __name__ == '__main__':
     main()
