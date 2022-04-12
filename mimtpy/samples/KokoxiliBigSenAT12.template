@@ -1,0 +1,6 @@
+## processing template default setting
+################################## concatenate chunks Parameters ####################################                          
+mimtpy.chunk                             = auto # auto for yes [yes or no]
+mimtpy.chunk.identifiers                 = auto # [string, string] auto for [Chunk, Big]
+mimtpy.chunk.chunks                      = KashChunk*SenAT13 # for mimtpy.chunk.identifier=auto
+mimtpy.chunk.project                     = KashBigSenAT13 # for mimtpy.chunk.identifier=auto
