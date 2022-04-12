@@ -38,10 +38,11 @@ NOTE = """ PLEASE NOTE:
 6. The concatenated data are masked data based on the mask of each chunk.
 7. If you set datatype as HDFEOS5, the concatenated data are S1*.he5 file containing displacement, velocity, temporalCoh, avgSpatialCoh, mask and geoemtry. The order of processing is geometry, temporalCoherence, avgSpatialCoherence, velocity, timeseries and mask.
 8. The chunks to be concatenated must be continuous. For example, the script can process chunks26, 27, 28 but not for chunks26, 28.  
+9. --project must be given unless you use the template as shown in the first example
 """
 
 EXAMPLE = """example:
-    concatenate_chunks.py $TE/MakranBigSenDT166.template  --datatype velocity
+    concatenate_chunks.py --template_file $TE/MakranBigSenDT166.template  --datatype velocity
     concatenate_chunks.py --chunks MakranChunk2*SenDT166 --project MakranBigSenDT166 --dir mintpy
     concatenate_chunks.py --chunks MakranChunk*SenDT166 --project MakranBigSenDT166
     concatenate_chunks.py --chunks MakranChunk2{5,6}SenDT166 --project MakranBigSenDT166 --dir mintpy --datatype velocity
@@ -54,7 +55,9 @@ def create_parser():
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog=NOTE+'\n'+EXAMPLE)
 
-    parser.add_argument('template_file', nargs='?', type=str, help='template file\n')
+    parser.add_argument('--template_file', nargs='?', type=str, help='template file\n')
+
+    parser.add_argument('files', nargs='*', type=str, help='S1 files with absolute dir\n')
 
     parser.add_argument('--chunks', nargs='+', type=str, help='chunk name\n')
     
@@ -66,7 +69,7 @@ def create_parser():
     
     parser.add_argument('--clear', action='store_true', default=False, help='whether remove temporal files\n')
     
-    parser.add_argument('--datatype', type=str, nargs=1, default='velocity', help='could be velocity, temporalCoherence, avgSpatialCoherence, timeseries, geometry and HDFEOS5\n')
+    parser.add_argument('--datatype', type=str, nargs=1, default='HDFEOS5', help='could be velocity, temporalCoherence, avgSpatialCoherence, timeseries, geometry and HDFEOS5\n')
 
     return parser
 
@@ -77,7 +80,7 @@ def cmd_line_parse(iargs=None):
     return inps
 
 
-def concatenation_chunks(chunks, project, datatype, pro_outdir, inps):
+def concatenation_chunks(chunks, project, datatype, pro_outdir, inps, files):
     dataset_dirs = [os.path.realpath(chunk) + "/mintpy" for chunk in chunks]
     dataset_dirs.sort()
     chunk_number = [re.findall(r'[A-Za-z]+|[\d.]+', os.path.basename(chunk))[1] for chunk in chunks]
@@ -105,7 +108,10 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps):
         print('the output dir for {} is {}.'.format(datatype, outdir))
  
         # find HDFEOS file
-        HDFEOS_file = mu.find_HDFEOS_fullname(dataset)
+        if files is not None:
+            HDFEOS_file = files[ii].split('/')[-1]
+        else:
+            HDFEOS_file = mu.find_HDFEOS_fullname(dataset)
         print('The HDFEOS file is {}'.format(HDFEOS_file))
 
         # extract mask
@@ -507,17 +513,24 @@ def pre_meta(ts_file, chunks):
     meta['last_frame'] = end_frame
     return meta, track_number, swath_number, start_frame, end_frame
 
+def get_chunks_from_files(inps):
+    files = inps.files
+         
+    chunks = [chunk_temp.split('/')[0] for chunk_temp in files]
+    files.sort()
+
+    return chunks, files
 ######################################################################################
 def main(iargs=None):
-    inps = cmd_line_parse(iargs)   
-    
-    outdir = inps.dir[0] 
-    datatype = inps.datatype[0] 
+    inps = cmd_line_parse(iargs)  
  
+    outdir = "".join(inps.dir) 
+    datatype = "".join(inps.datatype)
+
     if inps.template_file is not None:
         inpsdict =  mu.read_template(inps.template_file)
         if inpsdict['mimtpy.chunk'] == 'auto':
-            identifiers = inpsdict['mimtpy.chunk.identifier']
+            identifiers = inpsdict['mimtpy.chunk.identifiers']
             if identifiers == 'auto':
                 chunks = inpsdict['mimtpy.chunk.chunks']
                 project = inpsdict['mimtpy.chunk.project']
@@ -535,8 +548,13 @@ def main(iargs=None):
         else:
             raise ValueError('Please set parameters of mimtpy.chunk part')
         sys.exit(0)
-    else: 
-        chunks = inps.chunks
+    else:
+        if len(inps.files) != 0:
+            chunks, files_pointed = get_chunks_from_files(inps)
+        else:
+            chunks = inps.chunks
+            files_pointed = None
+        
         project = inps.project[0]
     # all trans to full path
     chunks = [os.path.realpath(c) if c[0] != '/' else c for c in chunks]
@@ -549,12 +567,16 @@ def main(iargs=None):
     # the output dir is project_name/mintpy/velocity/, for example: KokoxiliBigSenDT19/mintpy/velocity/
     # make sure the existence for project folders
     if datatype != 'HDFEOS5':
-        concatenation_chunks(chunks, project, datatype, outdir, inps)
+        concatenation_chunks(chunks, project, datatype, outdir, inps, files_pointed)
     elif datatype == 'HDFEOS5':
         for dtype in ['geometry', 'temporalCoherence', 'avgSpatialCoherence','velocity','timeseries']:
             print('***Process %s***' % dtype)
-            scp_args = ['--chunks', chunks, '--project', project, '--datatype', dtype, '--dir', outdir]
-            scp_args = mu.separate_string_by_space(scp_args)
+            if len(inps.files) != 0:
+                scp_args = [files_pointed[:], '--project', project, '--datatype', dtype, '--dir', outdir]
+                scp_args = mu.separate_string_by_space(scp_args)
+            else:
+                scp_args = ['--chunks', chunks, '--project', project, '--datatype', dtype, '--dir', outdir]
+                scp_args = mu.separate_string_by_space(scp_args)
 
             # run concatenate_chunks.py
             print('concatenate_chunks.py', scp_args)
