@@ -122,7 +122,7 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps, files):
             scp_args = mu.separate_string_by_space(scp_args)
             # run timeseries2velocity.py
             print('timeseries2velocity.py',scp_args)
-            mintpy.timeseries2velocity.main(scp_args.split())
+            mintpy.cli.timeseries2velocity.main(scp_args.split())
             shutil.move(os.path.join(dataset, 'velocity.h5'), os.path.join(outdir, 'geo_velocity_track.h5'))
             # mask the velocity
             os.chdir(outdir)
@@ -295,7 +295,7 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps, files):
     os.chdir(track_dir)
     scp_args = [track_dir + '/geo_' + datatype + '.h5', '--nodisplay', '--save']
     scp_args = mu.separate_string_by_space(scp_args)
-    mintpy.view.main(scp_args.split())
+    mintpy.cli.view.main(scp_args.split())
 
     #if datatype != 'timeseries':
     #for dataset in dataset_dirs:
