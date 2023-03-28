@@ -16,7 +16,8 @@ __all__=[
      'save_geodmod',
      'synthetic_S1',
      'subtract_h5',
-     'gridsearch_ramps_relax', 
+     'gridsearch_ramps_relax',
+     'concatenate_radarGeo', 
 ]
 
 root_module = Path(__file__).parent.parent.name #mimtpy
