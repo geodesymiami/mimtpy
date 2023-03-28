@@ -76,6 +76,15 @@ def find_HDFEOS_fullname(datadir):
         if os.path.splitext(file)[1] =='.he5':
                  datafiles.append(file)
     return datafiles[0]
+
+def find_Del4PSDS_fullname(datadir):
+    """find full name for S1**_Del4PSDS.he5"""
+    datafiles = []
+    for file in os.listdir(datadir):
+        if os.path.splitext(file)[1] == '.he5' and os.path.basename(file).split('_')[-1] == 'Del4PSDS.he5':
+            datafiles.append(file)
+
+    return datafiles[0]
     
 def find_nearest_date(datadir,date):
     """get the date close to the given date"""
