@@ -23,6 +23,15 @@ import mimtpy
 import mimtpy.workflow
 from mimtpy.utils import multitrack_utilities as mu
 ######################################################################################
+NOTE = """
+Please Note
+1. this script concatenate all patches of one project together
+2. Two files need to be prepared before do concatenation. 
+   2.1 concatenate_patch.txt contains the order of patches to be concatenated. Taken TangshanSenAT69 project as example, the content of concatenate_patch.txt is miaplpy_NE_201410_202212 miaplpy_NNE_201410_202212 miaplpy_SE_201410_202212 miaplpy_NW_201410_202212 miaplpy_NNW_201410_202212 miaplpy_SW_201410_202212.
+   2.2 reference_point.txt contains the latitude and longitude of the point located at the overlapping region between different patches. The order of these points follows the patches order in the concatenate_patches. Now users need to specify these points. 
+3. this script first preprocesses the S1**_Del4PSDS.he5 file to obtain the velocity/timeseries files. Then it calls the concatenate_rdrGeo.py to do the concatenation of two datasets. 
+"""
+
 EXAMPLE = """example:
 
     concatenate_patches.py concatenate_patch.txt --project TangshanSenAT69 --network network_delaunay_4 --datatype velocity --ref_file reference_point.txt 
@@ -32,7 +41,7 @@ EXAMPLE = """example:
 def create_parser():
     parser = argparse.ArgumentParser(description='Concatenate patches of miaplpy under radar coordinate',
                                      formatter_class=argparse.RawTextHelpFormatter,
-                                     epilog=EXAMPLE)
+                                     epilog=NOTE+'\n'+EXAMPLE)
 
     parser.add_argument('patches_file', nargs=1, type=str, help='concatenated patches sorted by user. \n')
 
