@@ -14,18 +14,26 @@ import mintpy
 import mintpy.workflow
 from mintpy.utils import readfile, ptime, writefile, utils as ut
 ######################################################################################
+NOTE = """
+Please Note:
+1. This script concatenates two datasets together. The input files are displacement (velocity/timeseries) datasets, their corresponding geometryRadar.h5 files
+2. Regarding to the reference point, now the script only support the specified point. Given the specified point, the script adjust the displacement by using the value of a point which is the nearest point to the specified point.
+3. If a batch concatenation needed, please use the concatnate_patches.py script.
+
+"""
+
 EXAMPLE = """example:
 
-    concatenate_radarGeo.py $SCRATCHDIR/TangshanSenAT69/miaplpy_NE_201410_202212/network_delaunay_4/rdr_velocity_msk.h5  $SCRATCHDIR/TangshanSenAT69/miaplpy_NNE_201410_202212/network_delaunay_4/rdr_velocity_msk.h5 --geo_file1 $SCRATCHDIR/TangshanSenAT69/miaplpy_NE_201410_202212/network_delaunay_4/rdr_geometry_msk.h5 --geo_file2 $SCRATCHDIR/TangshanSenAT69/miaplpy_NNE_201410_202212/network_delaunay_4/rdr_geometry_msk.h5 --ref_ll 39.04 118.45 --datatype velocity --output rdr_velocity_NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --ref_ll 39.04 118.45 --datatype velocity --output velocity_NE_NNE --outdir miaplpyBig
 
 """
 
 def create_parser():
     parser = argparse.ArgumentParser(description='Concatenate miaplpy patches',
                                      formatter_class=argparse.RawTextHelpFormatter,
-                                     epilog=EXAMPLE)
+                                     epilog=NOTE + '\n' + EXAMPLE)
 
-    parser.add_argument('patch_files', nargs='+', type=str, help='dataset to be concatenated \n')
+    parser.add_argument('patch_files', nargs='+', type=str, help='two displacement datasets to be concatenated \n')
 
     parser.add_argument('--geo_file1', nargs=1, type=str, help='geometryRadar file of dataset1. \n')
     
