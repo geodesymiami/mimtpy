@@ -167,7 +167,7 @@ def extract_data(inps,dataset,outdir):
             output_vel = 'velocity_' + date1 + '_' + date2 + '.h5'
             data_name = output_vel.split('.')[0]
             os.chdir(outdir)
-            completion_status = os.system(multitrack_utilities.seperate_str_byspace(['timeseries2velocity.py', outfile, '--start-date', date1, '--end-date', date2, '--exclude', '../exclude_date.txt', '--output', output_vel]))
+            completion_status = os.system(multitrack_utilities.separate_string_by_space(['timeseries2velocity.py', outfile, '--start-date', date1, '--end-date', date2, '--exclude', '../exclude_date.txt', '--output', output_vel]))
             if completion_status == 1:
                 raise Exception('error when generate velocity!')  
             data_vel, vel_atr = readfile.read(output_vel, datasetName='velocity')
