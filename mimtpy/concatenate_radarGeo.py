@@ -269,11 +269,12 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
     pnum = len(lat1_flatten) + len(lat2_flatten)
 
     ts_join_datast = dict()
-    ts_join = np.empty(shape=(join_dim, pnum, 1), dtype=np.float)
+    ts_join = np.empty(shape=(join_dim, pnum, 1), dtype=float)
     
     # do concatenation
     i = 0
     for date1, date2 in zip(Date1, Date2):
+        print('Process displacement data of date %s' % date1)
         dis1 = readfile.read(data1, datasetName=date1)[0]
         dis1_flatten = dis1.flatten('F')
         dis2 = readfile.read(data2, datasetName=date2)[0]
@@ -282,7 +283,7 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
         ts_join[i, :, :] = concatenate_process(dis1_flatten, dis2_flatten, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
         i += 1
 
-    ts_join_dataset['bperp'] = np.array(bperp, dtype=np.float32)
+    ts_join_dataset['bperp'] = np.array(bperp, dtype=float)
     ts_join_dataset['date'] = np.array(date_final, dtype=np.string_)
     ts_join_dataset['timeseries'] = ts_join
 
