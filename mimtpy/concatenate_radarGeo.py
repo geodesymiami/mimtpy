@@ -435,7 +435,7 @@ def write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps):
 
     output_dir = inps.outdir[0]
     outname = inps.output[0]
-    geo_outname = inps.datatype[0] + '_' + outname
+    geo_outname = 'geometry_' + outname
 
     #suffix = "_".join(data_outname.split('_')[2:]) 
     #lat_filename = output_dir + '/latitude_' + suffix + '.h5'
