@@ -126,8 +126,9 @@ def concatenate_patches(project, pthList, network, datatype, inps):
             os.chdir(network_dir)
             print('Go to network dir:', network_dir)
 
-            # read S1**_Del4PSDS.he5 file
-            HDFEOS_file = mu.find_Del4PSDS_fullname(network_dir)
+            # read S1**.he5 file
+            #HDFEOS_file = mu.find_Del4PSDS_fullname(network_dir)
+            HDFEOS_file = mu.find_HDFEOS_fullname(network_dir)
 
             # read mask
             maskfile = readfile.read(HDFEOS_file, datasetName='/HDFEOS/GRIDS/timeseries/quality/mask')[0]
@@ -205,7 +206,7 @@ def concatenate_patches(project, pthList, network, datatype, inps):
                 os.chdir(network_dir)
 
                 # find HDFEOS file
-                HDFEOS_file = mu.find_Del4PSDS_fullname(network_dir)
+                HDFEOS_file = mu.find_HDFEOS_fullname(network_dir)
                 print('The HDFEOS file is {}'.format(HDFEOS_file))
                 maskfile = readfile.read(HDFEOS_file, datasetName='/HDFEOS/GRIDS/timeseries/quality/mask')[0]
                 # process the date
@@ -231,9 +232,13 @@ def concatenate_patches(project, pthList, network, datatype, inps):
 
                 # mask data
                 if inps.maskTC:
-                    data_ts[:, maskfile == 0] = np.nan
+                    maskfile = maskfile * 1.0
+                    maskfile[np.where(maskfile == 0.0)] = np.nan
+                    data_ts = [maskfile] * data_ts.shape[0] * data_ts
                 if inps.maskPS:
-                    data_ts[:, maskPS == 0] = np.nan
+                    maskPS = maskPS * 1.0
+                    maskPS[np.where(maskPS == 0.0)] = np.nan
+                    data_ts = [maskPS] * data_ts.shape[0] * data_ts
 
                 # write to HDF5 file
                 dsDict = dict()
@@ -310,7 +315,7 @@ def getPatches(project, inps):
 
     for i in np.arange(patch_num):
         patch = patch_dirs[i]
-        HDFEOS_file = mu.find_Del4PSDS_fullname(patch + '/' + inps.network[0] + '/')
+        HDFEOS_file = mu.find_HDFEOS_fullname(patch + '/' + inps.network[0] + '/')
         patch_atr = readfile.read_attribute(patch + '/' + inps.network[0] + '/' + HDFEOS_file)
         maxlo = float(patch_atr['data_footprint'].split(',')[1].split(' ')[0])
         maxla = float(patch_atr['data_footprint'].split(',')[1].split(' ')[1])
