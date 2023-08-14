@@ -151,7 +151,7 @@ def calculate_offset_matrix(vel_ref, lat_ref, lon_ref, vel_aff, lat_aff, lon_aff
     offset = np.array([[1]])
     for i, row in find.iterrows():
         tmp = data.iloc[point[i]]
-        if distance[i][0] < 0.005: 
+        if distance[i][0] < 0.006: 
             find_s = pd.DataFrame(row).T
             vel_ref_value = find_s.loc[i, 'vel']
             vel_aff_value = tmp['vel'].get(point[i][0])
@@ -211,12 +211,13 @@ def concatenate_process(data1_flatten, data2_flatten, lat1_flatten, lon1_flatten
         offset *= (-1)
 
     overlay_offset = np.nanmedian(offset)
+    print('The overlay offset is %f' % overlay_offset)
 
     # adjust the affiliate image
     data2_flatten_adjust = data2_flatten + overlay_offset
 
     # do concatenation
-    data_joined = np.transpose(np.array([np.hstack((data1_flatten, data2_flatten))]))
+    data_joined = np.transpose(np.array([np.hstack((data1_flatten, data2_flatten_adjust))]))
 
     return data_joined
 
