@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #################################################################
-# Program is used for concatenating data under radar geometry   #
+# Program is used for viewing the PS point with satellite image #
 # Author: Lv Xiaoran                                            #
 # Created: Sep 2023                                             #
 #################################################################
@@ -34,7 +34,7 @@ EXAMPLE = """example:
 """
 
 def create_parser():
-    parser = argparse.ArgumentParser(description='Concatenate miaplpy patches',
+    parser = argparse.ArgumentParser(description='View PS points on satellite image and/or shape file vector',
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog=EXAMPLE)
 
@@ -264,7 +264,8 @@ class interactive_map:
         ts_dat = self.ts_sub[:, pos_row] * 100 + self.index * 10
         # plot
         if not np.all(np.isnan(ts_dat)):
-            self.ax_pts.plot(ts_dat)
+            self.ax_pts.scatter(np.arange(1,len(ts_dat) + 1), ts_dat, s=10, marker='o')
+            #self.ax_pts.plot(ts_dat)
             #self.ax_pts_hist.hist(ts_dat, bins=30, orientation="horizontal")
 
         self.ax_pts.set_ylabel('Displacement [cm]')
@@ -274,7 +275,7 @@ class interactive_map:
         # displacement the geo_info of selectd PS point
         geoinfo_str = 'The latitude is ' + str(poi_lat) + '\nThe longitude is ' + str(poi_lon)
         print(geoinfo_str)
-        self.ax_pts.text(1, -4, geoinfo_str, fontsize=10, bbox=dict(boxstyle='round', facecolor='white', edgecolor='gray', alpha=0.7))
+        self.ax_pts.text(1, -5, geoinfo_str, fontsize=10, bbox=dict(boxstyle='round', facecolor='white', edgecolor='gray', alpha=0.7))
 
         # update figure
         self.fig_pts.canvas.draw()
