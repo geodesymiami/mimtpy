@@ -17,6 +17,8 @@ import copy
 from shapely.geometry import box
 from matplotlib.backend_bases import MouseButton
 from matplotlib import widgets
+import scipy
+from shapely.geometry import Polygon
 
 from mintpy.utils import readfile, ptime, writefile, utils as ut
 from mintpy.objects import timeseries
@@ -31,6 +33,12 @@ EXAMPLE = """example:
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --output subset.png --outdir ./ 
 
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --ts_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/timeseries.h5 --interactive 
+
+    viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --shp_file ./shpfile/road.shp --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3
+
+    viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --shp_file ./shpfile/road.shp --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3
+    
+    viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3  
 """
 
 def create_parser():
@@ -40,11 +48,13 @@ def create_parser():
 
     parser.add_argument('input_file', nargs=1, type=str, help='velocity file under radar coordinate.\n')
 
-    parser.add_argument('--tiff_file', nargs=1, type=str, help='high spatial resolution image with geotiff format.\n')
+    parser.add_argument('--tiff_file', nargs='*', type=str, help='high spatial resolution image with geotiff format.\n')
     
     parser.add_argument('--geo_file', nargs=1, type=str, help='geometryRadar data corresponding to the Wphase file.\n')
     
-    parser.add_argument('--shp_file', nargs='*', type=str, help='shapefile of vector.\n')
+    parser.add_argument('--shp_file', nargs='*', type=str, 
+                        help='shapefile of vector. For example, *.osm files downloaded from OpenStreetMap can be converted to *.shp formate by QGIS'
+                        ' and plotted with PS points.\n')
     
     parser.add_argument('--two_poi', nargs='*', type=float, help='lat1 lon1 lat2 lon2 of two points.\n')
     
@@ -122,48 +132,58 @@ def plot_tiff_PS(file_src, gdf_obj, inps):
     fig, axes = plt.subplots(1, 1, figsize=figure_size)
     ax1 = axes
 
-    # generate bounding box
-    if inps.subset is not None:
-        bbox = box(inps.subset[2], inps.subset[0], inps.subset[3], inps.subset[1])
-    else:
-        bbox = box(np.nanmin(gdf_obj['Longitude']) - 0.005, np.nanmin(gdf_obj['Latitude']) - 0.005, np.nanmax(gdf_obj['Longitude']) + 0.005, np.nanmax(gdf_obj['Latitude']) + 0.005)
-    geo_box = geopandas.GeoDataFrame({'geometry': bbox}, index=[0], crs=file_src.crs)
-    def getFeatures(gdf):
-        import json
-        return [json.loads(gdf.to_json())['features'][0]['geometry']]
-    coords_box = getFeatures(geo_box)
-
-    tif_clip, transform_clip = mask(file_src, coords_box, crop=True)
-    meta_clip = file_src.meta.copy()
-    meta_clip.update({"driver": "GTiff",
-                      "height": tif_clip.shape[1],
-                      "width": tif_clip.shape[2],
-                      "transform": transform_clip})
-    # write the cut geotif file
-    tif_clip_outname = os.path.dirname(inps.tiff_file[0]) + '/' + os.path.basename(inps.tiff_file[0]).split('.')[0] + '_clip.tif'
-    with rasterio.open(tif_clip_outname, "w", **meta_clip) as dest:
-        dest.write(tif_clip)
-    bg_tif = rasterio.open(tif_clip_outname)
-
-    # delete the cut geotif
-    os.remove(tif_clip_outname)
-
     if inps.vlim is not None:
         vmin = inps.vlim[0]
         vmax = inps.vlim[1]
     else:
         vmin = np.min(gdf_obj['Value'])
         vmax = np.max(gdf_obj['Value'])
-    
-    # plot the high spatial resolution optical image
-    show(bg_tif, ax=ax1, alpha=0.8)
-    # plot PS points
-    gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=5)
-    # plot shp file
-    if inps.shp_file is not None:
-        shp_file = geopandas.read_file(inps.shp_file[0])
-        shp_file.plot(colot='black', ax=ax1, linestyle='dashed', linewidth=1)
 
+    # generate bounding box
+    if inps.subset is not None:
+        bbox = box(inps.subset[2], inps.subset[0], inps.subset[3], inps.subset[1])
+    else:
+        bbox = box(np.nanmin(gdf_obj['Longitude']) - 0.005, np.nanmin(gdf_obj['Latitude']) - 0.005, np.nanmax(gdf_obj['Longitude']) + 0.005, np.nanmax(gdf_obj['Latitude']) + 0.005)
+    geo_box = geopandas.GeoDataFrame({'geometry': bbox}, index=[0], crs=file_src.crs)
+
+    # start plot
+    if inps.tiff_file is not None:
+        def getFeatures(gdf):
+            import json
+            return [json.loads(gdf.to_json())['features'][0]['geometry']]
+        coords_box = getFeatures(geo_box)
+        tif_clip, transform_clip = mask(file_src, coords_box, crop=True)
+        meta_clip = file_src.meta.copy()
+        meta_clip.update({"driver": "GTiff",
+                          "height": tif_clip.shape[1],
+                          "width": tif_clip.shape[2],
+                          "transform": transform_clip})
+        # write the cut geotif file
+        tif_clip_outname = os.path.dirname(inps.tiff_file[0]) + '/' + os.path.basename(inps.tiff_file[0]).split('.')[0] + '_clip.tif'
+        with rasterio.open(tif_clip_outname, "w", **meta_clip) as dest:
+            dest.write(tif_clip)
+        bg_tif = rasterio.open(tif_clip_outname)
+
+        # delete the cut geotif
+        os.remove(tif_clip_outname)
+
+        # plot the high spatial resolution optical image
+        show(bg_tif, ax=ax1, alpha=0.8)
+        # plot PS points
+        gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=5)
+        # plot shp file
+        if inps.shp_file is not None:
+            shp_file = geopandas.read_file(inps.shp_file[0])
+            shp_file_clip = shp_file.clip(geo_box)
+            shp_file_clip.plot(color='yellow', ax=ax1, linestyle='solid', linewidth=0.3)
+
+    else:
+        shpfile_clip = file_src.clip(geo_box)
+        # plot the shape file background
+        shpfile_clip.plot(ax=ax1)
+        # plot the PS points
+        gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=5)
+         
     ax1.tick_params(which='both', direction='in', labelsize=8, bottom=True, top=True, left=True, right=True)
     cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
     sm1 = plt.cm.ScalarMappable(cmap=cmap)
@@ -285,47 +305,56 @@ class interactive_map:
         self.ax_img.set_ylabel('Longitude')
         self.ax_img.set_xlabel('Latitude')
 
-        bbox = box(self.inps.subset[2], self.inps.subset[0], self.inps.subset[3], self.inps.subset[1])
-        geo_box = geopandas.GeoDataFrame({'geometry': bbox}, index=[0], crs=self.src.crs)
-        def getFeatures(gdf):
-            import json
-            return [json.loads(gdf.to_json())['features'][0]['geometry']]
-        coords_box = getFeatures(geo_box)
-
-        tif_clip, transform_clip = mask(self.src, coords_box, crop=True)
-        self.transform, self.width, self.height = self.src.transform, self.src.width, self.src.height
-        self.crs = self.src.crs
-        meta_clip = self.src.meta.copy()
-        meta_clip.update({"driver": "GTiff",
-                          "height": tif_clip.shape[1],
-                          "width": tif_clip.shape[2],
-                          "transform": transform_clip})
-        # write the cut geotif file
-        tif_clip_outname = os.path.dirname(self.inps.tiff_file[0]) + '/' + os.path.basename(self.inps.tiff_file[0]).split('.')[0] + '_clip.tif'
-        with rasterio.open(tif_clip_outname, "w", **meta_clip) as dest:
-            dest.write(tif_clip)
-        bg_tif = rasterio.open(tif_clip_outname)
-
-        # delete the cut geotif
-        os.remove(tif_clip_outname)
-
         if self.inps.vlim is not None:
             vmin = self.inps.vlim[0]
             vmax = self.inps.vlim[1]
         else:
             vmin = np.min(self.gdf_obj['Value'])
             vmax = np.max(self.gdf_obj['Value'])
+        
+        bbox = box(self.inps.subset[2], self.inps.subset[0], self.inps.subset[3], self.inps.subset[1])
+        geo_box = geopandas.GeoDataFrame({'geometry': bbox}, index=[0], crs=self.src.crs)
+        
+        if self.inps.tiff_file is not None:
+            def getFeatures(gdf):
+                import json
+                return [json.loads(gdf.to_json())['features'][0]['geometry']]
+            coords_box = getFeatures(geo_box)
 
-        # plot the high spatial resolution optical image
-        show(bg_tif, ax=self.ax_img, alpha=0.8)
-        # plot PS points
-        self.gdf_obj.plot('Value', ax=self.ax_img, cmap=plt.cm.jet, vmin=vmin, vmax=vmax, markersize=5)
-        # plot shp file
-        if self.inps.shp_file is not None:
-            shp_file = geopandas.read_file(self.inps.shp_file[0])
-            shp_file.plot(colot='black', ax=self.ax_img, linestyle='dashed', linewidth=1)
+            tif_clip, transform_clip = mask(self.src, coords_box, crop=True)
+            self.transform, self.width, self.height = self.src.transform, self.src.width, self.src.height
+            self.crs = self.src.crs
+            meta_clip = self.src.meta.copy()
+            meta_clip.update({"driver": "GTiff",
+                              "height": tif_clip.shape[1],
+                              "width": tif_clip.shape[2],
+                              "transform": transform_clip})
+            # write the cut geotif file
+            tif_clip_outname = os.path.dirname(self.inps.tiff_file[0]) + '/' + os.path.basename(self.inps.tiff_file[0]).split('.')[0] + '_clip.tif'
+            with rasterio.open(tif_clip_outname, "w", **meta_clip) as dest:
+                dest.write(tif_clip)
+            bg_tif = rasterio.open(tif_clip_outname)
 
+            # delete the cut geotif
+            os.remove(tif_clip_outname)
 
+            # plot the high spatial resolution optical image
+            show(bg_tif, ax=self.ax_img, alpha=0.8)
+            # plot PS points
+            self.gdf_obj.plot('Value', ax=self.ax_img, cmap=plt.cm.jet, vmin=vmin, vmax=vmax, markersize=5)
+            # plot shp file
+            if self.inps.shp_file is not None:
+                shp_file = geopandas.read_file(self.inps.shp_file[0])
+                shp_file_clip = shp_file.clip(geo_box)
+                shp_file_clip.plot(color='yellow', ax=self.ax_img, linestyle='solid', linewidth=0.3)
+
+        else:
+            shpfile_clip = self.src.clip(geo_box)
+            # plot the shape file background
+            shpfile_clip.plot(ax=self.ax_img)
+            # plot the PS points
+            self.gdf_obj.plot('Value', ax=self.ax_img, cmap=plt.cm.jet, vmin=vmin, vmax=vmax, markersize=5)
+            
         self.ax_img.tick_params(which='both', direction='in', labelsize=8, bottom=True, top=True, left=True, right=True)
         cax1 = self.fig_img.add_axes([0.80, 0.18, 0.02, 0.6])
         sm1 = plt.cm.ScalarMappable(cmap=plt.cm.jet)
@@ -342,18 +371,34 @@ class interactive_map:
 def main():
     inps = cmd_line_parse()
 
-    vel_data = readfile.read(inps.input_file[0])[0]
-    vel_mask = copy.deepcopy(vel_data)
-    vel_mask[np.isnan(vel_mask)] = 1
-    lat_data = readfile.read(inps.geo_file[0], datasetName='latitude')[0]
-    lon_data = readfile.read(inps.geo_file[0], datasetName='longitude')[0]
+    file_extension = os.path.splitext(inps.input_file[0])[1] 
+    if file_extension == '.h5':
+        vel_data = readfile.read(inps.input_file[0])[0]
+        vel_mask = copy.deepcopy(vel_data)
+        vel_mask[np.isnan(vel_mask)] = 1
+        lat_data = readfile.read(inps.geo_file[0], datasetName='latitude')[0]
+        lon_data = readfile.read(inps.geo_file[0], datasetName='longitude')[0]
 
-    if inps.ts_file is not None:
-        ts_data = readfile.read(inps.ts_file, datasetName='timeseries')[0]
+        if inps.ts_file is not None:
+            ts_data = readfile.read(inps.ts_file, datasetName='timeseries')[0]
+    else:
+        vel_data = scipy.io.loadmat(inps.input_file[0])['ph_disp'] / 1000 # the unit of velocity is m/yr
+        vel_mask = vel_data
+        lon_data = np.float32(scipy.io.loadmat(inps.geo_file[0])['lonlat'][:,0].reshape(-1, 1))
+        lat_data = np.float32(scipy.io.loadmat(inps.geo_file[0])['lonlat'][:,1].reshape(-1, 1))
+        if inps.ts_file is not None:
+            ts_data = np.transpose(scipy.io.loadmat(inps.ts_file)['ph_disp']) / 4 / np.pi * 0.056 # radians to meter 
+            # the size of matrix is [date_num, PS_num]
 
     # read the geotiff file
-    file_src = rasterio.open(inps.tiff_file[0])
-    file_crs = file_src.crs
+    if inps.tiff_file is not None:
+        file_src = rasterio.open(inps.tiff_file[0])
+        file_crs = file_src.crs
+    elif inps.shp_file is not None:
+        file_src = geopandas.read_file(inps.shp_file[0])
+        file_crs = file_src.crs
+    else:
+        raise ValueError('Please at least provide one of the Geotiff file and shapefile file!') 
 
     if inps.two_poi is not None:
         lat_p1 = inps.two_poi[0]
@@ -385,7 +430,10 @@ def main():
         
         print('There are totally %d PS pixels' % len(lat_sub))  
         if inps.ts_file is not None:
-            ts_sub = ts_data[:, pos_row, pos_col] # size is [date_num, PS_num]
+            if file_extension == '.h5':
+                ts_sub = ts_data[:, pos_row, pos_col] # size is [date_num, PS_num]
+            else:
+                ts_sub = ts_data[:, pos_row]
         gdf_obj = generate_geopandas(lat_sub, lon_sub, vel_sub, file_crs)
 
     # plot the geo_tiff and PS points together
