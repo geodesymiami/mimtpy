@@ -24,6 +24,14 @@ from mintpy.utils import readfile, ptime, writefile, utils as ut
 from mintpy.objects import timeseries
 
 ######################################################################################
+NOTE = """
+NOTE:
+1. Here is some links to download the optical satellite images. But the highest spatial resolution of the open and free dataset is 10m.
+https://gisgeography.com/free-satellite-imagery-data-list/
+https://skywatch.com/free-sources-of-satellite-data/
+2. Planet is a good choose to try. And the Planet's policy is to download 5,000 square kilometers of free video per month
+"""
+
 EXAMPLE = """example:
 
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --two_poi 39.6 118.2 39.7 118.3 --output two_poi.png --outdir ./ 
@@ -39,12 +47,13 @@ EXAMPLE = """example:
     viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --shp_file ./shpfile/road.shp --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3
     
     viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3  
+
 """
 
 def create_parser():
     parser = argparse.ArgumentParser(description='View PS points on satellite image and/or shape file vector',
                                      formatter_class=argparse.RawTextHelpFormatter,
-                                     epilog=EXAMPLE)
+                                     epilog=EXAMPLE+NOTE)
 
     parser.add_argument('input_file', nargs=1, type=str, help='velocity file under radar coordinate.\n')
 
