@@ -48,6 +48,8 @@ EXAMPLE = """example:
     
     viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3  
 
+    viewer_PS_tiff.py ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/velocity_msk.h5 ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --shp_file ./shpfile/road.shp --geo_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/inputs/geometryRadar.h5 ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3
+    
 """
 
 def create_parser():
@@ -55,11 +57,11 @@ def create_parser():
                                      formatter_class=argparse.RawTextHelpFormatter,
                                      epilog=EXAMPLE+NOTE)
 
-    parser.add_argument('input_file', nargs=1, type=str, help='velocity file under radar coordinate.\n')
+    parser.add_argument('input_file', nargs='+', type=str, help='velocity file under radar coordinate.\n')
 
     parser.add_argument('--tiff_file', nargs='*', type=str, help='high spatial resolution image with geotiff format.\n')
     
-    parser.add_argument('--geo_file', nargs=1, type=str, help='geometryRadar data corresponding to the Wphase file.\n')
+    parser.add_argument('--geo_file', nargs='+', type=str, help='geometryRadar data corresponding to the Wphase file.\n')
     
     parser.add_argument('--shp_file', nargs='*', type=str, 
                         help='shapefile of vector. For example, *.osm files downloaded from OpenStreetMap can be converted to *.shp formate by QGIS'
@@ -79,6 +81,8 @@ def create_parser():
 
     parser.add_argument('--interactive',action='store_true', default=False, help='whether displace interactive map. \n')
 
+    parser.add_argument('--display',action='store_true', default=False, help='whether displace the final plot. \n')
+    
     return parser
 
 def cmd_line_parse(iargs=None):
@@ -135,7 +139,7 @@ def generate_geopandas(lat_sub, lon_sub, vel_sub, crs):
 
     return gdf
 
-def plot_tiff_PS(file_src, gdf_obj, inps):
+def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
     cmap = plt.cm.jet
     figure_size = [8.0, 8.0]
     fig, axes = plt.subplots(1, 1, figsize=figure_size)
@@ -180,6 +184,8 @@ def plot_tiff_PS(file_src, gdf_obj, inps):
         show(bg_tif, ax=ax1, alpha=0.8)
         # plot PS points
         gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=5)
+        if gdf_obj_s is not None:
+            gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
         # plot shp file
         if inps.shp_file is not None:
             shp_file = geopandas.read_file(inps.shp_file[0])
@@ -192,6 +198,8 @@ def plot_tiff_PS(file_src, gdf_obj, inps):
         shpfile_clip.plot(ax=ax1)
         # plot the PS points
         gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=5)
+        if gdf_obj_s is not None:
+            gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
          
     ax1.tick_params(which='both', direction='in', labelsize=8, bottom=True, top=True, left=True, right=True)
     cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
@@ -214,14 +222,16 @@ def plot_tiff_PS(file_src, gdf_obj, inps):
     ax1.set_ylabel('Latitude', font1)
     labels = ax1.get_xticklabels() + ax1.get_yticklabels()
     [label.set_fontname('serif') for label in labels]
-    #plt.show()    
 
-    # save png
-    if inps.outdir is not None:
-        fig_name = inps.outdir + '/' + inps.output
-        fig.savefig(fig_name, dpi=300, bbox_inches='tight')
+    if inps.display:
+        plt.show()    
     else:
-        raise ValueError('Please enter output name and dir!')
+        # save png
+        if inps.outdir is not None:
+            fig_name = inps.outdir + '/' + inps.output
+            fig.savefig(fig_name, dpi=300, bbox_inches='tight')
+        else:
+            raise ValueError('Please enter output name and dir!')
 
 class interactive_map:
     def __init__(self, *, file_src, gdf_obj, ts_sub, inps):
@@ -377,32 +387,63 @@ class interactive_map:
                  'size': 10.}
         cb.set_label('velocity [cm/year]', fontdict=font2)
 
+def read_miaplpy_data(input_file, geo_file, ts_file=None):
+    vel_data = readfile.read(input_file)[0]
+    lat_data = readfile.read(geo_file, datasetName='latitude')[0]
+    lon_data = readfile.read(geo_file, datasetName='longitude')[0]
+
+    if ts_file is not None:
+        ts_data = readfile.read(ts_file, datasetName='timeseries')[0]
+        return vel_data, lat_data, lon_data, ts_data
+    else:
+        return vel_data, lat_data, lon_data
+
+def read_stamps_data(input_file, geo_file, ts_file=None):
+    vel_data = scipy.io.loadmat(input_file)['ph_disp'] / 1000 # the unit of velocity is m/yr
+    lon_data = np.float32(scipy.io.loadmat(geo_file)['lonlat'][:,0].reshape(-1, 1))
+    lat_data = np.float32(scipy.io.loadmat(geo_file)['lonlat'][:,1].reshape(-1, 1))
+
+    if ts_file is not None:
+        ts_data = -1 * np.transpose(scipy.io.loadmat(ts_file)['ph_disp']) *0.056 / (4 * np.pi) # radians to meter
+        # the size of matrix is [date_num, PS_num]
+        return vel_data, lat_data, lon_data, ts_data
+    else:
+        return vel_data, lat_data, lon_data
+
 def main():
     inps = cmd_line_parse()
 
-    file_extension = os.path.splitext(inps.input_file[0])[1] 
-    if file_extension == '.h5':
-        vel_data = readfile.read(inps.input_file[0])[0]
+    if len(inps.input_file) == 1:
+        file_extension = os.path.splitext(inps.input_file[0])[1] 
+        if file_extension == '.h5':
+            if inps.ts_file is not None:
+                vel_data, lat_data, lon_data, ts_data = read_miaplpy_data(inps.input_file[0], inps.geo_file[0], inps.ts_file)
+            else:
+                vel_data, lat_data, lon_data = read_miaplpy_data(inps.input_file[0], inps.geo_file[0])
+            vel_mask = copy.deepcopy(vel_data)
+            vel_mask[np.isnan(vel_mask)] = 1
+        else:
+            if inps.ts_file is not None:
+                vel_data, lat_data, lon_data, ts_data = read_stamps_data(inps.input_file[0], inps.geo_file[0], inps.ts_file)
+            else:
+                vel_data, lat_data, lon_data = read_stamps_data(inps.input_file[0], inps.geo_file[0])
+            vel_mask = vel_data
+
+    elif len(inps.input_file) == 2:
+        vel_data, lat_data, lon_data = read_miaplpy_data(inps.input_file[0], inps.geo_file[0])
         vel_mask = copy.deepcopy(vel_data)
         vel_mask[np.isnan(vel_mask)] = 1
-        lat_data = readfile.read(inps.geo_file[0], datasetName='latitude')[0]
-        lon_data = readfile.read(inps.geo_file[0], datasetName='longitude')[0]
 
-        if inps.ts_file is not None:
-            ts_data = readfile.read(inps.ts_file, datasetName='timeseries')[0]
+        vel_data_s, lat_data_s, lon_data_s = read_stamps_data(inps.input_file[1], inps.geo_file[1])
+        vel_mask_s = vel_data_s
     else:
-        vel_data = scipy.io.loadmat(inps.input_file[0])['ph_disp'] / 1000 # the unit of velocity is m/yr
-        vel_mask = vel_data
-        lon_data = np.float32(scipy.io.loadmat(inps.geo_file[0])['lonlat'][:,0].reshape(-1, 1))
-        lat_data = np.float32(scipy.io.loadmat(inps.geo_file[0])['lonlat'][:,1].reshape(-1, 1))
-        if inps.ts_file is not None:
-            ts_data = np.transpose(scipy.io.loadmat(inps.ts_file)['ph_disp']) / 4 / np.pi * 0.056 # radians to meter 
-            # the size of matrix is [date_num, PS_num]
+        raise ValueError('viewer_PS_tiff.py can only process two datasets at same time!')
 
     # read the geotiff file
     if inps.tiff_file is not None:
         file_src = rasterio.open(inps.tiff_file[0])
         file_crs = file_src.crs
+    # read the shape file
     elif inps.shp_file is not None:
         file_src = geopandas.read_file(inps.shp_file[0])
         file_crs = file_src.crs
@@ -417,8 +458,8 @@ def main():
         pos_row1, pos_col1 = find_row_col(lat_data, lon_data, lat_p1, lon_p1)
         pos_row2, pos_col2 = find_row_col(lat_data, lon_data, lat_p2, lon_p2)
 
-        vel_val1 = vel_data[pos_row1, pos_col1]
-        vel_val2 = vel_data[pos_row2, pos_col2]
+        vel_val1 = vel_mask[pos_row1, pos_col1]
+        vel_val2 = vel_mask[pos_row2, pos_col2]
 
         lat_sub = np.array([lat_p1, lat_p2])
         lon_sub = np.array([lon_p1, lon_p2])
@@ -437,7 +478,15 @@ def main():
         lon_sub = lon_data[pos_row, pos_col] 
         vel_sub = vel_data[pos_row, pos_col] 
         
-        print('There are totally %d PS pixels' % len(lat_sub))  
+        if len(inps.input_file) == 2:
+            pos_row_s, pos_col_s = subset_PS_poi(lat_min, lat_max, lon_min, lon_max, lat_data_s, lon_data_s, vel_mask_s)
+            lat_sub_s = lat_data_s[pos_row_s, pos_col_s] 
+            lon_sub_s = lon_data_s[pos_row_s, pos_col_s] 
+            vel_sub_s = vel_data_s[pos_row_s, pos_col_s]
+            gdf_obj_s = generate_geopandas(lat_sub_s, lon_sub_s, vel_sub_s, file_crs)
+             
+
+        print('There are totally %d pixels in subset region' % len(lat_sub))  
         if inps.ts_file is not None:
             if file_extension == '.h5':
                 ts_sub = ts_data[:, pos_row, pos_col] # size is [date_num, PS_num]
@@ -451,7 +500,10 @@ def main():
         map_obj = interactive_map(file_src=file_src, gdf_obj=gdf_obj, ts_sub=ts_sub, inps=inps)
         map_obj.plot() 
     else:
-        plot_tiff_PS(file_src, gdf_obj, inps)
+        if len(inps.input_file) == 1:
+            plot_tiff_PS(file_src, gdf_obj, inps)
+        else:
+            plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s)
 ######################################################################################
 if __name__ == '__main__':
     main()
