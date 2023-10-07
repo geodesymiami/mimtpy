@@ -269,7 +269,7 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
     join_dim = len(Date1)
     pnum = len(lat1_flatten) + len(lat2_flatten)
 
-    ts_join_datast = dict()
+    ts_join_dataset = dict()
     ts_join = np.empty(shape=(join_dim, pnum, 1), dtype=float)
     
     # do concatenation
@@ -287,7 +287,6 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
     ts_join_dataset['bperp'] = np.array(bperp, dtype=float)
     ts_join_dataset['date'] = np.array(date_final, dtype=np.string_)
     ts_join_dataset['timeseries'] = ts_join
-
 
     return ts_join_dataset, ts1_atr, date_final
         
