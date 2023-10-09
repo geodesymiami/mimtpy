@@ -378,14 +378,14 @@ def write_ts(ts_joined_dataset, ts_atr, date_final, inps):
     atr_ts['WIDTH'] = str(colm)
     atr_ts['LENGTH'] = str(row)
     atr_ts['REF_LAT'] = str(1 - 1)
-    atr_ts['REF_LON'] = str((int(vel_atr['REF_Y']) + 1) + ((int(vel_atr['REF_X']) + 1) - 1) * int(vel_atr['LENGTH']) - 1)
+    atr_ts['REF_LON'] = str((int(ts_atr['REF_Y']) + 1) + ((int(ts_atr['REF_X']) + 1) - 1) * int(ts_atr['LENGTH']) - 1)
     atr_ts['FILE_TYPE'] = 'timeseries'
     
     output_dir = inps.outdir[0]
     outname = inps.output[0]
 
     ts_filename = output_dir + inps.datatype[0] + '_' + outname + '.h5'
-    writefile.write(datasetDict=ts_data, out_file=ts_filename, metadata=atr_ts)
+    writefile.write(datasetDict=ts_joined_dataset, out_file=ts_filename, metadata=atr_ts)
     
     return
 
@@ -464,8 +464,8 @@ def main(iargs=None):
         vel_joined, vel_atr = concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
         write_vel(vel_joined, vel_atr, inps)
     elif inps.datatype[0] == 'ts':
-        ts_join_dataset, ts1_atr, date_final = concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
-        write_ts(ts_joined_dataset, ts_atr, date_final, inps)
+        ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
+        write_ts(ts_join_dataset, ts_atr, date_final, inps)
     elif inps.datatype[0] == 'maskPS':
         msk_joined, msk_atr = concatenate_mask(inps)
         write_mask(msk_joined, inps)
