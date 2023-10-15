@@ -13,6 +13,7 @@ import copy
 import pandas as pd
 import math
 from sklearn.neighbors import KNeighborsClassifier
+from functools import partial
 
 import mintpy
 import mintpy.workflow
@@ -32,15 +33,15 @@ Please Note:
 
 EXAMPLE = """example:
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --datatype vel --geo_write --output NE_NNE --outdyyir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype vel --geo_write --output NE_NNE --outdyyir miaplpyBig
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --datatype vel --output NE_NNE --outdyyir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype vel --output NE_NNE --outdyyir miaplpyBig
     
-    concatenate_radarGeo.py miaplpy_NE/timeseries_msk.h5 miaplpy_NNE/timeseries_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/inputs/geometryRadar.h5 --datatype ts --output NE_NNE --outdir ./miaplpyBig/
+    concatenate_radarGeo.py miaplpy_NE/timeseries_msk.h5 miaplpy_NNE/timeseries_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/inputs/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype ts --output NE_NNE --outdir ./miaplpyBig/
 
-    concatenate_radarGeo.py miaplpy_NE/maskPS.h5  miaplpy_NNE/maskPS.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --datatype maskPS --output NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/maskPS.h5  miaplpy_NNE/maskPS.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype maskPS --output NE_NNE --outdir miaplpyBig
 
-    concatenate_radarGeo.py miaplpy_NE/maskTempCoh.h5  miaplpy_NNE/maskTempCoh.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --datatype maskTC --output NE_NNE --outdyyir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/maskTempCoh.h5  miaplpy_NNE/maskTempCoh.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype maskTC --output NE_NNE --outdyyir miaplpyBig
 """
 
 def create_parser():
@@ -53,6 +54,8 @@ def create_parser():
     parser.add_argument('--geo_file1', nargs=1, type=str, help='geometryRadar file of dataset1. \n')
     
     parser.add_argument('--geo_file2', nargs=1, type=str, help='geometryRadar file of dataset2. \n')
+    
+    parser.add_argument('--geo_full', nargs=1, type=str, help='geometryRadar file of the full region. \n')
     
     parser.add_argument('--datatype', nargs=1, type=str, help='data type: vel, ts, maskPS, maskTC\n')
    
@@ -70,6 +73,32 @@ def cmd_line_parse(iargs=None):
     inps = parser.parse_args(args=iargs)  
     
     return inps
+
+def flatten_trans(x):
+    original_shape = x.shape
+    return partial(np.reshape, newshape=original_shape)
+
+def geo_position_drop(data_sub, data):
+    a2 = np.lib.stride_tricks.as_strided(data, shape=data.shape + data_sub.shape, strides=2*data.strides)
+    a2 = a2[:-data_sub.shape[0]+1, :-data_sub.shape[1]+1]
+    import pdb
+    pdb.set_trace() 
+    pos_matrix = (a2 == data_sub).all(axis=(-2, -1))
+    #pos_temp = np.array(pos_matrix == True) 
+    
+    return pos_matrix
+
+def geo_position(lat_sub, lon_sub, lat, lon):
+    lat_ul = lat_sub[0][0]
+    lon_ul = lon_sub[0][0]
+
+    lat_flag = (lat == lat_ul)
+    lon_flag = (lon == lon_ul)
+
+    flag = lat_flag * lon_flag
+    pos_flag = np.where(flag == True)
+
+    return pos_flag[0][0], pos_flag[1][0]
 
 def haversin(theta):
     v = np.sin(theta / 2)
@@ -217,27 +246,67 @@ def concatenate_process(data1_flatten, data2_flatten, lat1_flatten, lon1_flatten
     data2_flatten_adjust = data2_flatten + overlay_offset
 
     # do concatenation
-    data_joined = np.transpose(np.array([np.hstack((data1_flatten, data2_flatten_adjust))]))
+    #data_joined = np.transpose(np.array([np.hstack((data1_flatten, data2_flatten_adjust))])) # for the flatten data concatenation
+
+    # return data_joined
+    return data2_flatten_adjust
+
+def concatenate_2D_geo(geo1_, geo2_, row1, col1, row2, col2, geometry):
+    # join the data
+    row_sum = geo1_.shape[0] + geo2_.shape[0]
+    col_sum = geo1_.shape[1] + geo2_.shape[1]
+
+    # join geo
+    geo_joined = np.ones((row_sum, col_sum)) * np.nan
+    geo_joined[0: geo1_.shape[0], 0: geo1_.shape[1]] = geo1_
+    geo_joined[geo1_.shape[0]: , geo1_.shape[1]: ] = geo2_
+    geo_joined[0: geo1_.shape[0], geo1_.shape[1]:] = geometry[row1: row1 + geo1_.shape[0], col1 + geo1_.shape[1]: col1 + geo1_.shape[1] + geo2_.shape[1]]
+    geo_joined[geo1_.shape[0]:, 0: geo1_.shape[1]] = geometry[row2: row2 + geo2_.shape[0], col2 - geo1_.shape[1]: col2]
+
+    return geo_joined 
+
+def concatenate_2D(data1_flatten, data2_flatten, unflatten_trans1, unflatten_trans2):
+    # transfer to 2D matrix
+    data1_ = unflatten_trans1(data1_flatten)
+    data2_ = unflatten_trans2(data2_flatten)
+
+    # join the data
+    row_sum = data1_.shape[0] + data2_.shape[0]
+    col_sum = data1_.shape[1] + data2_.shape[1]
+
+    # join value
+    data_joined = np.ones((row_sum, col_sum)) * np.nan
+    data_joined[0: data1_.shape[0], 0: data1_.shape[1]] = data1_
+    data_joined[data1_.shape[0]: , data1_.shape[1]: ] = data2_
 
     return data_joined
 
-def concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten):
+def concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2):
     data1 = inps.patch_files[0] # reference image
     data2 = inps.patch_files[1] # affiliate image
    
     print('Read the first dataset') 
     vel1, vel1_atr = readfile.read(data1, datasetName='velocity')
-    vel1_flatten = vel1.flatten('F')
+    vel1_flatten = vel1.flatten()
     
     print('Read the second dataset') 
     vel2, vel2_atr = readfile.read(data2, datasetName='velocity')
-    vel2_flatten = vel2.flatten('F')
+    vel2_flatten = vel2.flatten()
 
-    vel_joined = concatenate_process(vel1_flatten, vel2_flatten, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
+    #vel_joined = concatenate_process(vel1_flatten, vel2_flatten, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
+    vel2_flatten_adjust = concatenate_process(vel1_flatten, vel2_flatten, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
 
-    return vel_joined, vel1_atr
+    # generate 2D concatenation results
+    vel_joined = concatenate_2D(vel1_flatten, vel2_flatten_adjust, unflatten_trans1, unflatten_trans2)
 
-def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten):
+    # adjust the attribute table
+    vel_atr = vel1_atr
+    vel_atr['LENGTH'] = vel_joined.shape[0]
+    vel_atr['WIDTH'] = vel_joined.shape[1]
+    
+    return vel_joined, vel_atr
+
+def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2):
     data1 = inps.patch_files[0]
     data2 = inps.patch_files[1]
 
@@ -267,21 +336,27 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
     
     # prepare to concatenate
     join_dim = len(Date1)
-    pnum = len(lat1_flatten) + len(lat2_flatten)
+    #pnum = len(lat1_flatten) + len(lat2_flatten)
 
     ts_join_dataset = dict()
-    ts_join = np.empty(shape=(join_dim, pnum, 1), dtype=float)
+    row_sum = ts1.shape[1] + ts2.shape[1]
+    col_sum = ts1.shape[2] + ts2.shape[2]
+    ts_join = np.empty(shape=(join_dim, row_sum, col_sum), dtype=float)
+    #ts_join = np.empty(shape=(join_dim, pnum, 1), dtype=float)
     
     # do concatenation
     i = 0
     for date1, date2 in zip(Date1, Date2):
         print('Process displacement data of date %s' % date1)
         dis1 = readfile.read(data1, datasetName=date1)[0]
-        dis1_flatten = dis1.flatten('F')
+        dis1_flatten = dis1.flatten()
         dis2 = readfile.read(data2, datasetName=date2)[0]
-        dis2_flatten = dis2.flatten('F')
+        dis2_flatten = dis2.flatten()
 
-        ts_join[i, :, :] = concatenate_process(dis1_flatten, dis2_flatten, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
+        #ts_join[i, :, :] = concatenate_process(dis1_flatten, dis2_flatten, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)i
+        dis2_flatten_adjust = concatenate_process(dis1_flatten, dis2_flatten, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
+        # generate 2D concatenation results
+        ts_join[i, :, :] = concatenate_2D(dis1_flatten, dis2_flatten_adjust, unflatten_trans1, unflatten_trans2)
         i += 1
 
     ts_join_dataset['bperp'] = np.array(bperp, dtype=float)
@@ -300,11 +375,19 @@ def concatenate_mask(inps):
     print('Read the second dataset') 
     msk2, msk2_atr = readfile.read(data2)
 
-    msk1_flatten = msk1.flatten('F') # flatten matrix according colms
-    msk2_flatten = msk2.flatten('F') # flatten matrix according colms
+    #msk1_flatten = msk1.flatten('F') # flatten matrix according colms
+    #msk2_flatten = msk2.flatten('F') # flatten matrix according colms
 
     # do concatenation
-    msk_joined = np.transpose(np.array([np.hstack((msk1_flatten, msk2_flatten))]))
+    #msk_joined = np.transpose(np.array([np.hstack((msk1_flatten, msk2_flatten))]))
+    # join the data
+    row_sum = msk1.shape[0] + msk2.shape[0]
+    col_sum = msk1.shape[1] + msk2.shape[1]
+
+    # join value
+    msk_joined = np.zeros((row_sum, col_sum))
+    msk_joined[0: msk1.shape[0], 0: msk1.shape[1]] = msk1
+    msk_joined[msk1.shape[0]: , msk1.shape[1]: ] = msk2
 
     return msk_joined, msk1_atr
 
@@ -312,7 +395,15 @@ def concatenate_geo(inps):
     """concatenate geometry data"""
     data_geo1 = inps.geo_file1[0]
     data_geo2 = inps.geo_file2[0]
+    geo_full = inps.geo_full[0]
 
+    print('Read the geometry data for the full region') 
+    lat_full = readfile.read(geo_full, datasetName='latitude')[0]
+    lon_full = readfile.read(geo_full, datasetName='longitude')[0]
+    inc_full = readfile.read(geo_full, datasetName='incidenceAngle')[0]
+    azi_full = readfile.read(geo_full, datasetName='azimuthAngle')[0]
+    hgt_full = readfile.read(geo_full, datasetName='height')[0]
+    
     print('Read the first dataset') 
     lat1, lat_atr1 = readfile.read(data_geo1, datasetName='latitude')
     lon1, lon_atr1 = readfile.read(data_geo1, datasetName='longitude')
@@ -327,26 +418,46 @@ def concatenate_geo(inps):
     azi2, azi_atr2 = readfile.read(data_geo2, datasetName='azimuthAngle')
     hgt2, hgt_atr2 = readfile.read(data_geo2, datasetName='height')
     
-    lat1_flatten = lat1.flatten('F') # flatten matrix according colms
-    lon1_flatten = lon1.flatten('F')
-    inc1_flatten = inc1.flatten('F')
-    azi1_flatten = azi1.flatten('F')
-    hgt1_flatten = hgt1.flatten('F')
+    lat1_flatten = lat1.flatten() # flatten matrix according rows
+    lon1_flatten = lon1.flatten()
 
-    lat2_flatten = lat2.flatten('F')
-    lon2_flatten = lon2.flatten('F')
-    inc2_flatten = inc2.flatten('F')
-    azi2_flatten = azi2.flatten('F')
-    hgt2_flatten = hgt2.flatten('F')
+    lat2_flatten = lat2.flatten()
+    lon2_flatten = lon2.flatten()
     
-    # do concatenation
-    lat_joined = np.transpose(np.array([np.hstack((lat1_flatten, lat2_flatten))]))
-    lon_joined = np.transpose(np.array([np.hstack((lon1_flatten, lon2_flatten))]))
-    inc_joined = np.transpose(np.array([np.hstack((inc1_flatten, inc2_flatten))]))
-    azi_joined = np.transpose(np.array([np.hstack((azi1_flatten, azi2_flatten))]))
-    hgt_joined = np.transpose(np.array([np.hstack((hgt1_flatten, hgt2_flatten))]))
+    # calculate the unflatten pattern
+    unflatten_trans1 = flatten_trans(lat1)
+    unflatten_trans2 = flatten_trans(lat2)
 
-    return lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten
+    # do concatenation
+    #lat_joined = np.transpose(np.array([np.hstack((lat1_flatten, lat2_flatten))]))
+    #lon_joined = np.transpose(np.array([np.hstack((lon1_flatten, lon2_flatten))]))
+    #inc_joined = np.transpose(np.array([np.hstack((inc1_flatten, inc2_flatten))]))
+    #azi_joined = np.transpose(np.array([np.hstack((azi1_flatten, azi2_flatten))]))
+    #hgt_joined = np.transpose(np.array([np.hstack((hgt1_flatten, hgt2_flatten))]))
+
+    # find the position of subset lat/lon in the Geometry data
+    #pos_la1 = geo_position(lat1, lat_full)
+    #pos_lo1 = geo_position(lon1, lon_full)
+    #pos1_ = pos_la1 * pos_lo1
+    #row1 = np.array(pos1_ == True)[0][0]
+    #col1 = np.array(pos1_ == True)[1][0]
+
+    #pos_la2 = geo_position(lat2, lat_full)
+    #pos_lo2 = geo_position(lon2, lon_full)
+    #pos2_ = pos_la2 * pos_lo2
+    #row2 = np.array(pos2_ == True)[0][0]
+    #col2 = np.array(pos2_ == True)[1][0]
+
+    row1, col1 = geo_position(lat1, lon1, lat_full, lon_full)
+    row2, col2 = geo_position(lat2, lon2, lat_full, lon_full)
+    
+    lat_joined = concatenate_2D_geo(lat1, lat2, row1, col1, row2, col2, lat_full)
+    lon_joined = concatenate_2D_geo(lon1, lon2, row1, col1, row2, col2, lon_full)
+    inc_joined = concatenate_2D_geo(inc1, inc2, row1, col1, row2, col2, inc_full)
+    azi_joined = concatenate_2D_geo(azi1, azi2, row1, col1, row2, col2, azi_full)
+    hgt_joined = concatenate_2D_geo(hgt1, hgt2, row1, col1, row2, col2, hgt_full)
+
+    return lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2
 
 def write_vel(vel_joined, vel_atr, inps):
     
@@ -355,8 +466,8 @@ def write_vel(vel_joined, vel_atr, inps):
     atr_vel = dict()
     atr_vel['WIDTH'] = str(colm)
     atr_vel['LENGTH'] = str(row)
-    atr_vel['REF_X'] = str(1 - 1)
-    atr_vel['REF_Y'] = str((int(vel_atr['REF_Y']) + 1) + ((int(vel_atr['REF_X']) + 1) - 1) * int(vel_atr['LENGTH']) - 1)
+    #atr_vel['REF_X'] = str(1 - 1)
+    #atr_vel['REF_Y'] = str((int(vel_atr['REF_Y']) + 1) + ((int(vel_atr['REF_X']) + 1) - 1) * int(vel_atr['LENGTH']) - 1)
     #print('The value is %d' % vel_joined[int(atr_vel['REF_Y'])])
     atr_vel['FILE_TYPE'] = 'velocity'
     
@@ -377,8 +488,8 @@ def write_ts(ts_joined_dataset, ts_atr, date_final, inps):
     atr_ts = ts_atr
     atr_ts['WIDTH'] = str(colm)
     atr_ts['LENGTH'] = str(row)
-    atr_ts['REF_LAT'] = str(1 - 1)
-    atr_ts['REF_LON'] = str((int(ts_atr['REF_Y']) + 1) + ((int(ts_atr['REF_X']) + 1) - 1) * int(ts_atr['LENGTH']) - 1)
+    #atr_ts['REF_LAT'] = str(1 - 1)
+    #atr_ts['REF_LON'] = str((int(ts_atr['REF_Y']) + 1) + ((int(ts_atr['REF_X']) + 1) - 1) * int(ts_atr['LENGTH']) - 1)
     atr_ts['FILE_TYPE'] = 'timeseries'
     
     output_dir = inps.outdir[0]
@@ -455,16 +566,16 @@ def main(iargs=None):
     inps = cmd_line_parse(iargs)   
     
     print('process the geometry info')
-    lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten = concatenate_geo(inps)
+    lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2 = concatenate_geo(inps)
     if inps.geo_write:
         write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps)
 
     print('process %s data' % inps.datatype[0])
     if inps.datatype[0] == 'vel':
-        vel_joined, vel_atr = concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
+        vel_joined, vel_atr = concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2)
         write_vel(vel_joined, vel_atr, inps)
     elif inps.datatype[0] == 'ts':
-        ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten)
+        ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2)
         write_ts(ts_join_dataset, ts_atr, date_final, inps)
     elif inps.datatype[0] == 'maskPS':
         msk_joined, msk_atr = concatenate_mask(inps)
