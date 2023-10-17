@@ -82,15 +82,17 @@ def read_patches(patches_file):
     
     return patches_name
 
-def read_ref_point(ref_file):
-    data = np.loadtxt(ref_file, dtype=float, delimiter=' ')
-    
-    return data
-
 def concatenate_patches(project, pthList, network, datatype, inps):
     project_dir = os.getenv('SCRATCHDIR') + '/' + project + '/'
     print('change directory to %s' % project_dir)
     os.chdir(project_dir)
+
+    # find the mintpy/inputs/goeometryRadar.h5 processed with 1:1 looks
+    geometry_Big = project_dir +  './mintpy/inputs/geometryRadar.h5'
+    if os.path.exist(geometry_Big):
+        print('read the geometry data processed with 1:1 looks')
+    else:
+        raise ValueError('No geometryRadar.h5 processed with 1:1 looks')
  
     # patches directory
     patches_dir = pthList
@@ -265,27 +267,27 @@ def concatenate_patches(project, pthList, network, datatype, inps):
     #lat_range = np.arange(lat_min, lat_max)
     patch_range = patches_ID
     if pro_num == 2:
-        temp_name = 'rdr_' + datatype
-        scp_args = [patches_dir[0] + '/' + network + '/rdr_' + datatype + '_msk.h5', patches_dirs[1] + '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', patches_dir[0] + '/' + network + '/rdr_geometry_msk.h5', '--geo_file2', patches_dir[1] + '/' + network + '/rdr_geometry_msk.h5', '--datatype', datatype, '--geo_write', '--output', temp_name,  '--outdir', outputdir + '/']
+        temp_name = patch_range[0] + '_' + patch_range[1]
+        scp_args = [patches_dir[0] + '/' + network + '/rdr_' + datatype + '_msk.h5', patches_dir[1] + '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', patches_dir[0] + '/' + network + '/rdr_geometry_msk.h5', '--geo_file2', patches_dir[1] + '/' + network + '/rdr_geometry_msk.h5', '--geo_full' geometry_Big, '--datatype', datatype, '--geo_write', '--output', temp_name,  '--outdir', output_dir + '/']
         scp_args = mu.separate_string_by_space(scp_args)
-        # run concatenate_offset.py
-        print('concatenate_offset.py',scp_args)
-        mimtpy.concatenate_offset.main(scp_args.split())   
+        # run concatenate_radarGeo.py
+        print('concatenate_radarGeo.py',scp_args)
+        mimtpy.concatenate_radarGeo.main(scp_args.split())
     else:
         for i in np.arange(pro_num - 1):
             if i == 0:
                 temp_name = patch_range[0] + '_' + patch_range[1]
                 temp_geo = 'geometry_' + patch_range[0] + '_' + patch_range[1]
-                scp_args = [patches_dir[0] + '/' + network + '/rdr_' + datatype + '_msk.h5', patches_dir[1] + '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', patches_dir[0] + '/' + network + '/rdr_geometry_msk.h5', '--geo_file2', patches_dir[1] + '/' + network + '/rdr_geometry_msk.h5', '--datatype', datatype, '--geo_write', '--output', temp_name,  '--outdir', output_dir + '/']
+                scp_args = [patches_dir[0] + '/' + network + '/rdr_' + datatype + '_msk.h5', patches_dir[1] + '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', patches_dir[0] + '/' + network + '/rdr_geometry_msk.h5', '--geo_file2', patches_dir[1] + '/' + network + '/rdr_geometry_msk.h5', '--geo_full' geometry_Big, '--datatype', datatype, '--geo_write', '--output', temp_name,  '--outdir', output_dir + '/']
             elif i > 0 and i < (pro_num - 1 - 1):
                 temp_name = temp_files[i-1] + '_' + patch_range[i+1]
                 temp_geo = temp_geos[i-1] + '_' + patch_range[i+1]
-                scp_args = [output_dir + '/' + datatype + '_' + temp_files[i-1] +'.h5', patches_dir[i+1] + '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', output_dir + '/' + temp_geos[i-1] + '.h5', '--geo_file2', patches_dir[i+1] + '/' + network + '/rdr_geometry_msk.h5', '--datatype', datatype, '--geo_write', '--output', temp_name, '--outdir', output_dir + '/']
+                scp_args = [output_dir + '/' + datatype + '_' + temp_files[i-1] +'.h5', patches_dir[i+1] + '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', output_dir + '/' + temp_geos[i-1] + '.h5', '--geo_file2', patches_dir[i+1] + '/' + network + '/rdr_geometry_msk.h5', '--geo_full' geometry_Big, '--datatype', datatype, '--geo_write', '--output', temp_name, '--outdir', output_dir + '/']
             else:
                 #temp_name = 'velocity_lat_' + str(lat_range[0]) + '_' + str(lat_range[-1])
                 temp_name = 'full'
                 temp_geo = 'geometry_full'
-                scp_args = [output_dir + '/' + datatype + '_' + temp_files[i-1] +'.h5', patches_dir[i+1]+ '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', output_dir + '/' + temp_geos[i-1] + '.h5', '--geo_file2', patches_dir[i+1] + '/' + network + '/rdr_geometry_msk.h5', '--datatype', datatype, '--geo_write', '--output', temp_name, '--outdir', output_dir + '/']
+                scp_args = [output_dir + '/' + datatype + '_' + temp_files[i-1] +'.h5', patches_dir[i+1]+ '/' + network + '/rdr_' + datatype + '_msk.h5', '--geo_file1', output_dir + '/' + temp_geos[i-1] + '.h5', '--geo_file2', patches_dir[i+1] + '/' + network + '/rdr_geometry_msk.h5', '--geo_full' geometry_Big, '--datatype', datatype, '--geo_write', '--output', temp_name, '--outdir', output_dir + '/']
 
             temp_files.append(temp_name)
             temp_geos.append(temp_geo)
