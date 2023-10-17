@@ -238,7 +238,7 @@ def concatenate_process(data1_flatten, data2_flatten, lat1_flatten, lon1_flatten
     return data2_flatten_adjust
 
 def concatenate_2D(geo_ref, geo_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type, geometry=None):
-    if ref_flag == 1:
+    if ref_flag == 1 or ref_flag == 4:
         # join the data
         row_sum = geo_aff.shape[0] + row_a_r
         col_sum = geo_aff.shape[1] + col_a_r
@@ -254,7 +254,7 @@ def concatenate_2D(geo_ref, geo_aff, row_ref, col_ref, row_aff, col_aff, row_a_r
             geo_joined[0: row_a_r, geo_ref.shape[1]: ] = 0
             geo_joined[geo_ref.shape[0]: , 0: col_a_r] = 0
 
-    elif ref_flag == 2:
+    elif ref_flag == 2 or ref_flag == 3:
         # join the data
         row_sum = geo_aff.shape[0] + row_a_r
         col_sum = geo_aff.shape[1] + geo_ref.shape[1] - col_a_r
@@ -273,10 +273,10 @@ def concatenate_2D(geo_ref, geo_aff, row_ref, col_ref, row_aff, col_aff, row_a_r
     return geo_joined 
 
 def concatenate_vel(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag):
-    if ref_flag == 1:
+    if ref_flag == 1 or ref_flag == 3:
         data_ref = inps.patch_files[0]
         data_aff = inps.patch_files[1]
-    else:
+    elif ref_flag == 2 or ref_flag == 4:
         data_ref = inps.patch_files[1]
         data_aff = inps.patch_files[0]   
 
@@ -304,10 +304,10 @@ def concatenate_vel(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon
     return vel_joined, vel_atr
 
 def concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag):
-    if ref_flag == 1:
+    if ref_flag == 1 or ref_flag == 3:
         data_ref = inps.patch_files[0]
         data_aff = inps.patch_files[1]
-    else:
+    elif ref_flag == 2 or ref_flag == 4:
         data_ref = inps.patch_files[1]
         data_aff = inps.patch_files[0]   
 
@@ -337,11 +337,11 @@ def concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_
     join_dim = len(Date1)
 
     ts_join_dataset = dict()
-    if ref_flag == 1:
+    if ref_flag == 1 or ref_flag == 4:
         # join the data
         row_sum = ts_aff.shape[1] + row_a_r
         col_sum = ts_aff.shape[2] + col_a_r
-    elif ref_flag == 2:
+    elif ref_flag == 2 or ref_flag == 3:
         # join the data
         row_sum = ts_aff.shape[1] + row_a_r
         col_sum = ts_aff.shape[2] + ts_ref.shape[2] - col_a_r
@@ -375,10 +375,10 @@ def concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_
         
 def concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag):
     """concantenate maskPS data"""
-    if ref_flag == 1:
+    if ref_flag == 1 or ref_flag == 3:
         data_ref = inps.patch_files[0]
         data_aff = inps.patch_files[1]
-    else:
+    elif ref_flag == 2 or ref_flag == 4:
         data_ref = inps.patch_files[1]
         data_aff = inps.patch_files[0]   
 
@@ -562,14 +562,12 @@ def find_the_reference(inps):
 
     if lat1_ul <= lat2_ul and lon1_ul <= lon2_ul:
         return 1
-    else:
+    elif lat1_ul > lat2_ul and lon1_ul < lon2_ul:
         return 2
-    #elif lat1_ul < lat2_ul and lon1_ul < lon2_ul:
-    #    return 2
-    #elif lat1_ul > lat2_ul and lon1_ul > lon2_ul:
-    #    return 3
-    #elif lat1_ul < lat2_ul and lon1_ul > lon2_ul:
-    #    return 4
+    elif lat1_ul < lat2_ul and lon1_ul > lon2_ul:
+        return 3
+    elif lat1_ul > lat2_ul and lon1_ul > lon2_ul:
+        return 4
 
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
