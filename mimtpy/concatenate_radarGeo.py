@@ -33,15 +33,15 @@ Please Note:
 
 EXAMPLE = """example:
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype vel --geo_write --output NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5 --geo_write --out-suffix NE_NNE --outdir miaplpyBig
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype vel --output NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir miaplpyBig
     
-    concatenate_radarGeo.py miaplpy_NE/timeseries_msk.h5 miaplpy_NNE/timeseries_msk.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/inputs/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype ts --output NE_NNE --outdir ./miaplpyBig/
+    concatenate_radarGeo.py miaplpy_NE/timeseries_msk.h5 miaplpy_NNE/timeseries_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/inputs/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir ./miaplpyBig/
 
-    concatenate_radarGeo.py miaplpy_NE/maskPS.h5  miaplpy_NNE/maskPS.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype maskPS --output NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/maskPS.h5  miaplpy_NNE/maskPS.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir miaplpyBig
 
-    concatenate_radarGeo.py miaplpy_NE/maskTempCoh.h5  miaplpy_NNE/maskTempCoh.h5 --geo_file1 miaplpy_NE/inputs/geometryRadar.h5 --geo_file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo_full ./inputs/geometryRadar.h5 --datatype maskTC --output NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/maskTempCoh.h5  miaplpy_NNE/maskTempCoh.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir miaplpyBig
 """
 
 def create_parser():
@@ -51,17 +51,17 @@ def create_parser():
 
     parser.add_argument('patch_files', nargs='+', type=str, help='two displacement datasets to be concatenated \n')
 
-    parser.add_argument('--geo_file1', nargs=1, type=str, help='geometryRadar file of dataset1. \n')
+    parser.add_argument('--geo-file1', nargs=1, type=str, help='geometryRadar file of dataset1. \n')
     
-    parser.add_argument('--geo_file2', nargs=1, type=str, help='geometryRadar file of dataset2. \n')
+    parser.add_argument('--geo-file2', nargs=1, type=str, help='geometryRadar file of dataset2. \n')
     
-    parser.add_argument('--geo_full', nargs=1, type=str, help='Whole region geometryRadar.h5 file processed with 1:1 looks. \n')
+    parser.add_argument('--geo-full', nargs=1, type=str, help='Whole region geometryRadar.h5 file processed with 1:1 looks. \n')
     
-    parser.add_argument('--datatype', nargs=1, type=str, help='data type: vel, ts, maskPS, maskTC\n')
+    #parser.add_argument('--datatype', nargs=1, type=str, help='data type: vel, ts, maskPS, maskTC\n')
    
     parser.add_argument('--geo_write',action='store_true', default=False, help='whether write the concatenated geometryRadar.h5 results. \n')
  
-    parser.add_argument('--output', nargs=1, type=str, help='output name of concatenated data. \n')
+    parser.add_argument('--out-suffix', nargs=1, type=str, help='suffix of output name of concatenated data. \n')
 
     parser.add_argument('--outdir',dest='outdir',nargs=1,
                         help='output directory to store the concatenated results')
@@ -455,7 +455,7 @@ def concatenate_geo(inps, ref_flag):
 
     return lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_ref, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r
 
-def write_vel(vel_joined, vel_atr, inps):
+def write_vel(vel_joined, vel_atr, datatype, inps):
     
     row, colm = vel_joined.shape
 
@@ -468,14 +468,14 @@ def write_vel(vel_joined, vel_atr, inps):
     vel_data['velocity'] = vel_joined
 
     output_dir = inps.outdir[0]
-    outname = inps.output[0]
+    outname = inps.out_suffix[0]
     
-    vel_filename = output_dir + '/' + inps.datatype[0] + '_' + outname + '.h5'
+    vel_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
     writefile.write(datasetDict=vel_data, out_file=vel_filename, metadata=atr_vel)
 
     return 
 
-def write_ts(ts_joined_dataset, ts_atr, date_final, inps):
+def write_ts(ts_joined_dataset, ts_atr, date_final, datatype, inps):
     row, colm = ts_joined_dataset['timeseries'].shape[1: ]
 
     atr_ts = ts_atr
@@ -484,14 +484,14 @@ def write_ts(ts_joined_dataset, ts_atr, date_final, inps):
     atr_ts['FILE_TYPE'] = 'timeseries'
     
     output_dir = inps.outdir[0]
-    outname = inps.output[0]
+    outname = inps.out_suffix[0]
 
-    ts_filename = output_dir + '/' + inps.datatype[0] + '_' + outname + '.h5'
+    ts_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
     writefile.write(datasetDict=ts_joined_dataset, out_file=ts_filename, metadata=atr_ts)
     
     return
 
-def write_mask(msk_joined, inps):
+def write_mask(msk_joined, datatype, inps):
     row, colm = msk_joined.shape
     
     # write simple attribution
@@ -504,8 +504,8 @@ def write_mask(msk_joined, inps):
     msk_data['mask'] = msk_joined
 
     output_dir = inps.outdir[0]
-    outname = inps.output[0]
-    msk_outname = inps.datatype[0] + '_' + outname
+    outname = inps.out_suffix[0]
+    msk_outname = datatype + '_' + outname
     msk_filename = output_dir + '/' + msk_outname + '.h5'
 
     writefile.write(datasetDict=msk_data, out_file=msk_filename, metadata=atr_msk)
@@ -537,7 +537,7 @@ def write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps):
     geo_data['longitude'] = lon_joined
 
     output_dir = inps.outdir[0]
-    outname = inps.output[0]
+    outname = inps.out_suffix[0]
     geo_outname = 'geometry_' + outname
 
     geo_filename = output_dir + '/' + geo_outname + '.h5'
@@ -569,9 +569,19 @@ def find_the_reference(inps):
     elif lat1_ul > lat2_ul and lon1_ul > lon2_ul:
         return 4
 
+def determine_datatype(inps):
+    data = inps.patch_files[0]
+    data_atr = readfile.read_attribute(data)
+    datatype = data_atr['FILE_TYPE'] 
+
+    return datatype
+
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
-    
+   
+    print('determine the data type')
+    datatype = determine_datatype(inps)
+
     print('Find which dataset is reference dataset')
     ref_flag = find_the_reference(inps)
 
@@ -580,21 +590,19 @@ def main(iargs=None):
     if inps.geo_write:
         write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps)
 
-    print('process %s data' % inps.datatype[0])
-    if inps.datatype[0] == 'vel':
+    print('process %s data' % datatype)
+    if datatype == 'velocity':
         vel_joined, vel_atr = concatenate_vel(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
-        write_vel(vel_joined, vel_atr, inps)
-    elif inps.datatype[0] == 'ts':
+        write_vel(vel_joined, vel_atr, datatype, inps)
+    elif datatype == 'timeseries':
         ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
-        write_ts(ts_join_dataset, ts_atr, date_final, inps)
-    elif inps.datatype[0] == 'maskPS':
+        write_ts(ts_join_dataset, ts_atr, date_final, datatype, inps)
+    elif datatype == 'mask':
         msk_joined, msk_atr = concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
-        write_mask(msk_joined, inps)
-    elif inps.datatype[0] == 'maskTC':
-        msk_joined, msk_atr = concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
-        write_mask(msk_joined, inps)
-        
-
+        write_mask(msk_joined, datatype, inps)
+    #elif datatype == 'mask':
+    #    msk_joined, msk_atr = concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
+    #    write_mask(msk_joined, inps)
 ######################################################################################
 if __name__ == '__main__':
     main()
