@@ -78,16 +78,19 @@ def flatten_trans(x):
     original_shape = x.shape
     return partial(np.reshape, newshape=original_shape)
 
-def geo_position(lat_sub, lon_sub, lat, lon, ref_flag=None):
+def geo_position_backup(lat_sub, lon_sub, lat, lon, ref_flag=None):
     if ref_flag is None:
         lat_corner = lat_sub[0][0] # use the upper left point
         lon_corner = lon_sub[0][0]
-    elif ref_flag == 1:
+    elif ref_flag == 1 or ref_flag == 4 or ref_flag == 6 or ref_flag == 7:
         lat_corner = lat_sub[0][0] # use the upper left point
         lon_corner = lon_sub[0][0]
-    elif ref_flag == 2:
+    elif ref_flag == 2 or ref_flag == 3 or ref_flag == 8:
         lat_corner = lat_sub[0][-1] # use the upper right point
         lon_corner = lon_sub[0][-1]
+    elif ref_flag == 5:
+        lat_corner = lat_sub[-1][0] # use the lower left point
+        lon_corner = lon_sub[-1][0]
 
     lat_flag = (lat == lat_corner)
     lon_flag = (lon == lon_corner)
@@ -96,6 +99,34 @@ def geo_position(lat_sub, lon_sub, lat, lon, ref_flag=None):
     pos_flag = np.where(flag == True)
 
     return pos_flag[0][0], pos_flag[1][0]
+
+def get_position(lat_sub, lon_sub, lat, lon):
+    row_list = [0, -1]
+    col_list = [0, -1]
+
+    row_col_matrix = np.ones((4, 2), dtype=int) * np.nan
+    num = 0
+
+    for row in row_list:
+        for col in col_list:
+            lat_corner = lat_sub[row][col]
+            lon_corner = lon_sub[row][col]
+            lat_flag = (lat == lat_corner)
+            lon_flag = (lon == lon_corner)
+            flag = lat_flag * lon_flag
+            pos = np.where(flag == True)
+            row_col_matrix[num][0] = pos[0][0]
+            row_col_matrix[num][1] = pos[1][0]
+            num += 1
+
+    return row_col_matrix
+
+def design_joined_matrix(rc_ref, rc_aff):
+    row_join_upper = int(np.min([rc_ref[0, 0], rc_aff[0, 0]]))
+    row_join_lower = int(np.max([rc_ref[-1, 0], rc_aff[-1, 0]]))
+    col_join_left = int(np.min([rc_ref[0, 1], rc_aff[0, 1]]))
+    col_join_right = int(np.max([rc_ref[-1, 1], rc_aff[-1, 1]]))
+    return row_join_upper, row_join_lower, col_join_left, col_join_right
 
 def haversin(theta):
     v = np.sin(theta / 2)
@@ -237,49 +268,61 @@ def concatenate_process(data1_flatten, data2_flatten, lat1_flatten, lon1_flatten
 
     return data2_flatten_adjust
 
-def concatenate_2D(geo_ref, geo_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type, geometry=None):
+def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
+    row_join_start, row_join_end, col_join_start, col_join_end = design_joined_matrix(rc_ref, rc_aff)
+    val_join = np.ones((row_join_end - row_join_start + 1, col_join_end - col_join_start + 1)) * np.nan
+    row_a_r = int(np.abs(rc_ref[0, 0] - rc_aff[0, 0]))
+    col_a_r = int(np.abs(rc_ref[0, 1] - rc_aff[0, 1]))
     if ref_flag == 1 or ref_flag == 4:
-        # join the data
-        row_sum = geo_aff.shape[0] + row_a_r
-        col_sum = geo_aff.shape[1] + col_a_r
         # join geo
-        print('The concatenated data size is {} rows and {} colms'.format(row_sum, col_sum))
-        geo_joined = np.ones((row_sum, col_sum)) * np.nan
-        geo_joined[0: geo_ref.shape[0], 0: geo_ref.shape[1]] = geo_ref
-        geo_joined[row_a_r: , col_a_r: ] = geo_aff
-        if data_type == 'geo':
-            geo_joined[0: row_a_r, geo_ref.shape[1]: ] = geometry[row_ref: row_aff, col_ref + geo_ref.shape[1]: col_aff + geo_aff.shape[1]]
-            geo_joined[geo_ref.shape[0]: , 0: col_a_r] = geometry[row_ref + geo_ref.shape[0] : row_aff + geo_aff.shape[0], col_ref: col_aff]
-        elif data_type == 'msk':
-            geo_joined[0: row_a_r, geo_ref.shape[1]: ] = 0
-            geo_joined[geo_ref.shape[0]: , 0: col_a_r] = 0
+        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
+        val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
+        val_join[row_a_r: , col_a_r: ] = val_aff
+        if data_type == 'msk':
+            val_join[np.where(val_join == np.nan)] = 0
 
     elif ref_flag == 2 or ref_flag == 3:
-        # join the data
-        row_sum = geo_aff.shape[0] + row_a_r
-        col_sum = geo_aff.shape[1] + geo_ref.shape[1] - col_a_r
         # join geo
-        print('The concatenated data size is {} rows and {} colms'.format(row_sum, col_sum))
-        geo_joined = np.ones((row_sum, col_sum)) * np.nan
-        geo_joined[0: geo_ref.shape[0], geo_aff.shape[1] - col_a_r: ] = geo_ref
-        geo_joined[row_a_r: , 0: geo_aff.shape[1]] = geo_aff
-        if data_type == 'geo':
-            geo_joined[0: row_a_r, 0: geo_aff.shape[1] - col_a_r] = geometry[row_ref: row_aff, col_aff: col_ref]
-            geo_joined[geo_ref.shape[0]:, geo_aff.shape[1]: ] = geometry[row_ref + geo_ref.shape[0]: row_aff + geo_aff.shape[0], col_aff + geo_aff.shape[1]: col_ref + geo_ref.shape[1]]
-        elif datatype == 'msk':
-            geo_joined[0: row_a_r, 0: geo_aff.shape[1] - col_a_r] = 0
-            geo_joined[geo_ref.shape[0]:, geo_aff.shape[1]: ] = 0
+        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
+        val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
+        val_join[row_a_r: , 0: val_aff.shape[1]] = val_aff
+        if datatype == 'msk':
+            val_join[np.where(val_join == np.nan)] = 0
 
-    return geo_joined 
+    elif ref_flag == 5:
+        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
+        val_join[row_a_r: , 0: val_ref.shape[1]] = val_ref
+        val_join[0: val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff
+        if datatype == 'msk':
+            val_join[np.where(val_join == np.nan)] = 0
 
-def concatenate_vel(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag):
-    if ref_flag == 1 or ref_flag == 3:
-        data_ref = inps.patch_files[0]
-        data_aff = inps.patch_files[1]
-    elif ref_flag == 2 or ref_flag == 4:
-        data_ref = inps.patch_files[1]
-        data_aff = inps.patch_files[0]   
+    elif ref_flag == 6:
+        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
+        val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
+        val_join[row_a_r: , col_a_r: col_a_r + val_aff.shape[1]] = val_aff
+        if datatype == 'msk':
+            val_join[np.where(val_join == np.nan)] = 0
 
+    elif ref_flag == 7:
+        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
+        val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
+        val_join[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1]] = val_aff
+        if datatype == 'msk':
+            val_join[np.where(val_join == np.nan)] = 0
+
+    elif ref_flag == 8:
+        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
+        val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
+        val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff
+        if datatype == 'msk':
+            val_join[np.where(val_join == np.nan)] = 0
+
+    return val_join
+
+def concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag):
+    ref_No, aff_No, rc_ref, rc_aff,lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten = appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
+    data_ref = inps.patch_files[ref_No]
+    data_aff = inps.patch_files[aff_No]
 
     print('Read the reference dataset') 
     vel_ref, vel_ref_atr = readfile.read(data_ref, datasetName='velocity')
@@ -290,11 +333,14 @@ def concatenate_vel(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon
     vel_aff_flatten = vel_aff.flatten()
 
     vel_aff_flatten_adjust = concatenate_process(vel_ref_flatten, vel_aff_flatten, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten)
-    vel_aff_adjust = unflatten_trans_aff(vel_aff_flatten_adjust)
+    if aff_No == 0:
+        vel_aff_adjust = unflatten_trans1(vel_aff_flatten_adjust)
+    else:
+        vel_aff_adjust = unflatten_trans2(vel_aff_flatten_adjust)
 
     # generate 2D concatenation results
     data_type = 'vel'
-    vel_joined = concatenate_2D(vel_ref, vel_aff_adjust, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type)
+    vel_joined = concatenate_2D(vel_ref, vel_aff_adjust, rc_ref, rc_aff, ref_flag, data_type)
 
     # adjust the attribute table
     vel_atr = vel_ref_atr
@@ -303,13 +349,10 @@ def concatenate_vel(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon
     
     return vel_joined, vel_atr
 
-def concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag):
-    if ref_flag == 1 or ref_flag == 3:
-        data_ref = inps.patch_files[0]
-        data_aff = inps.patch_files[1]
-    elif ref_flag == 2 or ref_flag == 4:
-        data_ref = inps.patch_files[1]
-        data_aff = inps.patch_files[0]   
+def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag):
+    ref_No, aff_No, rc_ref, rc_aff,lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten = appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
+    data_ref = inps.patch_files[ref_No]
+    data_aff = inps.patch_files[aff_No]
 
     print('Read the reference dataset') 
     ts_ref, ts_ref_atr = readfile.read(data_ref, datasetName='timeseries')
@@ -335,16 +378,11 @@ def concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_
     
     # prepare to concatenate
     join_dim = len(Date1)
+    row_join_start, row_join_end, col_join_start, col_join_end = design_joined_matrix(rc_ref, rc_aff)
+    row_sum = row_join_end - row_join_start + 1
+    col_sum = col_join_end - col_join_start + 1
 
     ts_join_dataset = dict()
-    if ref_flag == 1 or ref_flag == 4:
-        # join the data
-        row_sum = ts_aff.shape[1] + row_a_r
-        col_sum = ts_aff.shape[2] + col_a_r
-    elif ref_flag == 2 or ref_flag == 3:
-        # join the data
-        row_sum = ts_aff.shape[1] + row_a_r
-        col_sum = ts_aff.shape[2] + ts_ref.shape[2] - col_a_r
     ts_join = np.empty(shape=(join_dim, row_sum, col_sum), dtype=float)
     # do concatenation
     i = 0
@@ -356,10 +394,14 @@ def concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_
         dis_aff_flatten = dis_aff.flatten()
 
         dis_aff_flatten_adjust = concatenate_process(dis_ref_flatten, dis_aff_flatten, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten)
-        dis_aff_adjust = unflatten_trans_aff(dis_aff_flatten_adjust)
+        if aff_No == 0:
+            dis_aff_adjust = unflatten_trans1(dis_aff_flatten_adjust)
+        else:
+            dis_aff_adjust = unflatten_trans2(dis_aff_flatten_adjust)
+
         # generate 2D concatenation results
         data_type = 'ts'
-        ts_join[i, :, :] = concatenate_2D(dis_ref, dis_aff_adjust, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type)
+        ts_join[i, :, :] = concatenate_2D(dis_ref, dis_aff_adjust, rc_ref, rc_aff, ref_flag, data_type)
         i += 1
 
     ts_join_dataset['bperp'] = np.array(bperp, dtype=float)
@@ -373,14 +415,11 @@ def concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_
 
     return ts_join_dataset, ts_atr, date_final
         
-def concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag):
+def concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag):
     """concantenate maskPS data"""
-    if ref_flag == 1 or ref_flag == 3:
-        data_ref = inps.patch_files[0]
-        data_aff = inps.patch_files[1]
-    elif ref_flag == 2 or ref_flag == 4:
-        data_ref = inps.patch_files[1]
-        data_aff = inps.patch_files[0]   
+    ref_No, aff_No, rc_ref, rc_aff,lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten = appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
+    data_ref = inps.patch_files[ref_No]
+    data_aff = inps.patch_files[aff_No]
 
     print('Read the reference dataset') 
     msk_ref, msk_ref_atr = readfile.read(data_ref) 
@@ -388,7 +427,7 @@ def concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r,
     msk_aff, msk_aff_atr = readfile.read(data_aff)
 
     data_type = 'msk'
-    msk_joined = concatenate_2D(msk_ref, msk_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type)
+    msk_joined = concatenate_2D(msk_ref, msk_aff, rc_ref, rc_aff, ref_flag, data_type)
 
     # adjust the attribute table
     msk_atr = msk_ref_atr
@@ -397,14 +436,10 @@ def concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r,
 
     return msk_joined, msk_atr
 
-def concatenate_geo(inps, ref_flag):
+def concatenate_geo(inps):
     """concatenate geometry data"""
-    if ref_flag == 1:
-        data_geo_ref = inps.geo_file1[0]
-        data_geo_aff = inps.geo_file2[0]
-    else:
-        data_geo_ref = inps.geo_file2[0]
-        data_geo_aff = inps.geo_file1[0]
+    data_geo1 = inps.geo_file1[0]
+    data_geo2 = inps.geo_file2[0]    
         
     geo_full = inps.geo_full[0]
 
@@ -415,45 +450,44 @@ def concatenate_geo(inps, ref_flag):
     azi_full = readfile.read(geo_full, datasetName='azimuthAngle')[0]
     hgt_full = readfile.read(geo_full, datasetName='height')[0]
     
-    print('Read the reference dataset') 
-    lat_ref, lat_atr_ref = readfile.read(data_geo_ref, datasetName='latitude')
-    lon_ref, lon_atr_ref = readfile.read(data_geo_ref, datasetName='longitude')
-    inc_ref, inc_atr_ref = readfile.read(data_geo_ref, datasetName='incidenceAngle')
-    azi_ref, azi_atr_ref = readfile.read(data_geo_ref, datasetName='azimuthAngle')
-    hgt_ref, hgt_atr_ref = readfile.read(data_geo_ref, datasetName='height')
+    print('Read the first dataset') 
+    lat1, lat_atr1 = readfile.read(data_geo1, datasetName='latitude')
+    lon1, lon_atr1 = readfile.read(data_geo1, datasetName='longitude')
+    inc1, inc_atr1 = readfile.read(data_geo1, datasetName='incidenceAngle')
+    azi1, azi_atr1 = readfile.read(data_geo1, datasetName='azimuthAngle')
+    hgt1, hgt_atr1 = readfile.read(data_geo1, datasetName='height')
 
-    print('Read the affilicate dataset') 
-    lat_aff, lat_atr_aff = readfile.read(data_geo_aff, datasetName='latitude')
-    lon_aff, lon_atr_aff = readfile.read(data_geo_aff, datasetName='longitude')
-    inc_aff, inc_atr_aff = readfile.read(data_geo_aff, datasetName='incidenceAngle')
-    azi_aff, azi_atr_aff = readfile.read(data_geo_aff, datasetName='azimuthAngle')
-    hgt_aff, hgt_atr_aff = readfile.read(data_geo_aff, datasetName='height')
+    print('Read the second dataset') 
+    lat2, lat_atr2 = readfile.read(data_geo2, datasetName='latitude')
+    lon2, lon_atr2 = readfile.read(data_geo2, datasetName='longitude')
+    inc2, inc_atr2 = readfile.read(data_geo2, datasetName='incidenceAngle')
+    azi2, azi_atr2 = readfile.read(data_geo2, datasetName='azimuthAngle')
+    hgt2, hgt_atr2 = readfile.read(data_geo2, datasetName='height')
     
-    lat_ref_flatten = lat_ref.flatten() # flatten matrix according rows
-    lon_ref_flatten = lon_ref.flatten()
+    lat1_flatten = lat1.flatten() # flatten matrix according rows
+    lon1_flatten = lon1.flatten()
 
-    lat_aff_flatten = lat_aff.flatten()
-    lon_aff_flatten = lon_aff.flatten()
+    lat2_flatten = lat2.flatten()
+    lon2_flatten = lon2.flatten()
     
     # calculate the unflatten pattern
-    unflatten_trans_ref = flatten_trans(lat_ref)
-    unflatten_trans_aff = flatten_trans(lat_aff)
+    unflatten_trans1 = flatten_trans(lat1)
+    unflatten_trans2 = flatten_trans(lat2)
 
-    print('Find the position of reference data using lat/lon')
-    row_ref, col_ref = geo_position(lat_ref, lon_ref, lat_full, lon_full)
-    print('Find the position of affilite data using lat/lon')
-    row_aff, col_aff = geo_position(lat_aff, lon_aff, lat_full, lon_full)
-    print('Find the position of affilite data in reference data using lat/lon')
-    row_a_r, col_a_r = geo_position(lat_aff, lon_aff, lat_ref, lon_ref, ref_flag)
+    print('Convert to X-Y coordinate')
+    rc1 = get_position(lat1, lon1, lat_full, lon_full)
+    rc2 = get_position(lat2, lon2, lat_full, lon_full)
+
+    # extract the geometry info for the joined region
+    row_join_start, row_join_end, col_join_start, col_join_end = design_joined_matrix(rc1, rc2)
+
+    lat_joined = lat_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
+    lon_joined = lon_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
+    inc_joined = inc_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
+    azi_joined = azi_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
+    hgt_joined = hgt_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
     
-    data_type = 'geo'
-    lat_joined = concatenate_2D(lat_ref, lat_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type, lat_full)
-    lon_joined = concatenate_2D(lon_ref, lon_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type, lon_full)
-    inc_joined = concatenate_2D(inc_ref, inc_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type, inc_full)
-    azi_joined = concatenate_2D(azi_ref, azi_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type, azi_full)
-    hgt_joined = concatenate_2D(hgt_ref, hgt_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag, data_type, hgt_full)
-
-    return lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_ref, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r
+    return lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2
 
 def write_vel(vel_joined, vel_atr, datatype, inps):
     
@@ -547,27 +581,56 @@ def write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps):
 
     print('Finish!')
 
-def find_the_reference(inps):
+def find_the_reference(rc1, rc2):
     """Find the reference data based on geo info"""
-    geo1_lat = readfile.read(inps.geo_file1[0], datasetName='latitude')[0]
-    geo1_lon = readfile.read(inps.geo_file1[0], datasetName='longitude')[0]
-    geo2_lat = readfile.read(inps.geo_file2[0], datasetName='latitude')[0]
-    geo2_lon = readfile.read(inps.geo_file2[0], datasetName='longitude')[0]
+    row1_ul = rc1[0][0] # upper left point
+    col1_ul = rc1[0][1]
+    row1_lr = rc1[3][0] # lower right point
+    col1_lr = rc1[3][1]
 
-    lat1_ul = geo1_lat[0][0]
-    lon1_ul = geo1_lon[0][0]
+    row2_ul = rc2[0][0] # upper left point
+    col2_ul = rc2[0][1]
+    row2_lr = rc2[3][0] # lower right point
+    col2_lr = rc2[3][1]
 
-    lat2_ul = geo2_lat[0][0]
-    lon2_ul = geo2_lon[0][0]
-
-    if lat1_ul <= lat2_ul and lon1_ul <= lon2_ul:
+    if row1_ul <= row2_ul and col1_ul <= col2_ul and row1_lr <= row2_lr and col1_lr <= col2_lr:
         return 1
-    elif lat1_ul > lat2_ul and lon1_ul < lon2_ul:
+    elif row1_ul > row2_ul and col1_ul < col2_ul and row1_lr > row2_lr and col1_lr < col2_lr:
         return 2
-    elif lat1_ul < lat2_ul and lon1_ul > lon2_ul:
+    elif row1_ul < row2_ul and col1_ul > col2_ul and row1_lr < row2_lr and col1_lr > col2_lr:
         return 3
-    elif lat1_ul > lat2_ul and lon1_ul > lon2_ul:
+    elif row1_ul > row2_ul and col1_ul > col2_ul and row1_lr > row2_lr and col1_lr > col2_lr:
         return 4
+    elif row1_ul > row2_ul and col1_ul < col2_ul and row1_lr > row2_lr and col1_lr > col2_lr:
+        return 5
+    elif row1_ul < row2_ul and col1_ul < col2_ul and row1_lr < row2_lr and col1_lr > col2_lr:
+        return 6
+    elif row1_ul < row2_ul and col1_ul < col2_ul and row1_lr > row2_lr and col1_lr < col2_lr:
+        return 7
+    elif row1_ul < row2_ul and col1_ul > col2_ul and row1_lr > row2_lr and col1_lr > col2_lr:
+        return 8
+
+def appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag):
+    if ref_flag == 2 or ref_flag == 4:
+        data_ref = 1
+        data_aff = 0
+        rc_ref = rc2
+        rc_aff = rc1
+        lat_ref_flatten = lat2_flatten
+        lon_ref_flatten = lon2_flatten
+        lat_aff_flatten = lat1_flatten
+        lon_aff_flatten = lon1_flatten
+    else:
+        data_ref = 0
+        data_aff = 1
+        rc_ref = rc1
+        rc_aff = rc2
+        lat_ref_flatten = lat1_flatten
+        lon_ref_flatten = lon1_flatten
+        lat_aff_flatten = lat2_flatten
+        lon_aff_flatten = lon2_flatten
+
+    return data_ref, data_aff, rc_ref, rc_aff, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten
 
 def determine_datatype(inps):
     data = inps.patch_files[0]
@@ -582,23 +645,23 @@ def main(iargs=None):
     print('determine the data type')
     datatype = determine_datatype(inps)
 
-    print('Find which dataset is reference dataset')
-    ref_flag = find_the_reference(inps)
-
     print('process the geometry info')
-    lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_ref, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r = concatenate_geo(inps, ref_flag)
+    lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2 = concatenate_geo(inps)
     if inps.geo_write:
         write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps)
 
+    print('Find which dataset is reference dataset')
+    ref_flag = find_the_reference(rc1, rc2)
+
     print('process %s data' % datatype)
     if datatype == 'velocity':
-        vel_joined, vel_atr = concatenate_vel(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
+        vel_joined, vel_atr = concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag)
         write_vel(vel_joined, vel_atr, datatype, inps)
     elif datatype == 'timeseries':
-        ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten, unflatten_trans_aff, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
+        ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag)
         write_ts(ts_join_dataset, ts_atr, date_final, datatype, inps)
     elif datatype == 'mask':
-        msk_joined, msk_atr = concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
+        msk_joined, msk_atr = concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
         write_mask(msk_joined, datatype, inps)
     #elif datatype == 'mask':
     #    msk_joined, msk_atr = concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
