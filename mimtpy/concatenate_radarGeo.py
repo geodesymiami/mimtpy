@@ -33,7 +33,7 @@ Please Note:
 
 EXAMPLE = """example:
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5 --geo_write --out-suffix NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5 --geo-write --out-suffix NE_NNE --outdir miaplpyBig
 
     concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir miaplpyBig
     
@@ -59,11 +59,11 @@ def create_parser():
     
     #parser.add_argument('--datatype', nargs=1, type=str, help='data type: vel, ts, maskPS, maskTC\n')
    
-    parser.add_argument('--geo_write',action='store_true', default=False, help='whether write the concatenated geometryRadar.h5 results. \n')
+    parser.add_argument('--geo-write',action='store_true', default=False, help='whether write the concatenated geometryRadar.h5 results. \n')
  
-    parser.add_argument('--out-suffix', nargs=1, type=str, help='suffix of output name of concatenated data. \n')
+    parser.add_argument('--out-suffix', nargs=1,  default=[''], help='suffix of output name of concatenated data. \n')
 
-    parser.add_argument('--outdir',dest='outdir',nargs=1,
+    parser.add_argument('--outdir',dest='outdir',nargs=1, default=[],
                         help='output directory to store the concatenated results')
     
     return parser
@@ -503,8 +503,11 @@ def write_vel(vel_joined, vel_atr, datatype, inps):
 
     output_dir = inps.outdir[0]
     outname = inps.out_suffix[0]
-    
-    vel_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
+    if len(outname) is 0:
+        vel_filename = output_dir + '/' + datatype +  '.h5'
+    else:
+        vel_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
+
     writefile.write(datasetDict=vel_data, out_file=vel_filename, metadata=atr_vel)
 
     return 
@@ -519,8 +522,12 @@ def write_ts(ts_joined_dataset, ts_atr, date_final, datatype, inps):
     
     output_dir = inps.outdir[0]
     outname = inps.out_suffix[0]
+    file_name = os.path.basename(inps.patch_files[0])
+    if len(outname) is 0:
+        ts_filename = output_dir + '/' + file_name +  '.h5'
+    else:
+        ts_filename = output_dir + '/' + file_name + '_' + outname + '.h5'
 
-    ts_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
     writefile.write(datasetDict=ts_joined_dataset, out_file=ts_filename, metadata=atr_ts)
     
     return
@@ -539,8 +546,11 @@ def write_mask(msk_joined, datatype, inps):
 
     output_dir = inps.outdir[0]
     outname = inps.out_suffix[0]
-    msk_outname = datatype + '_' + outname
-    msk_filename = output_dir + '/' + msk_outname + '.h5'
+    file_name = os.path.basename(inps.patch_files[0])
+    if len(outname) is 0:
+        msk_filename = output_dir + '/' + file_name +  '.h5'
+    else:
+        msk_filename = output_dir + '/' + file_name + '_' + outname + '.h5'
 
     writefile.write(datasetDict=msk_data, out_file=msk_filename, metadata=atr_msk)
      
@@ -572,7 +582,10 @@ def write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps):
 
     output_dir = inps.outdir[0]
     outname = inps.out_suffix[0]
-    geo_outname = 'geometry_' + outname
+    if len(outname) is 0:
+        geo_outname = 'geometryRadar'
+    else:
+        geo_outname = 'geometryRadar_' + outname
 
     geo_filename = output_dir + '/' + geo_outname + '.h5'
 
@@ -641,11 +654,11 @@ def determine_datatype(inps):
 
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
-   
-    print('determine the data type')
-    datatype = determine_datatype(inps)
 
-    print('process the geometry info')
+    datatype = determine_datatype(inps)
+    print('Data type found: ', datatype)
+
+    print('Process the geometry info')
     lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2 = concatenate_geo(inps)
     if inps.geo_write:
         write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps)
