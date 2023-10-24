@@ -33,9 +33,9 @@ Please Note:
 
 EXAMPLE = """example:
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5 --geo-write --out-suffix NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5 --geo-write --outdir miaplpyBig
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-full ./inputs/geometryRadar.h5 --outdir miaplpyBig
     
     concatenate_radarGeo.py miaplpy_NE/timeseries_msk.h5 miaplpy_NNE/timeseries_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/inputs/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir ./miaplpyBig/
 
@@ -51,20 +51,24 @@ def create_parser():
 
     parser.add_argument('patch_files', nargs='+', type=str, help='two displacement datasets to be concatenated \n')
 
-    parser.add_argument('--geo-file1', nargs=1, type=str, help='geometryRadar file of dataset1. \n')
+    parser.add_argument('--geo-file1', nargs=1, type=str, default=['default'], 
+                        help='geometryRadar file of dataset1.' + 
+                        'The default means using geometryRadar.h5 existing in the corresponding patch_files inputs folder\n')
     
-    parser.add_argument('--geo-file2', nargs=1, type=str, help='geometryRadar file of dataset2. \n')
+    parser.add_argument('--geo-file2', nargs=1, type=str, default=['default'], 
+                        help='geometryRadar file of dataset2.' + 
+                        'The default means using geometryRadar.h5 existing in the corresponding patch_files inputs folder\n')
     
     parser.add_argument('--geo-full', nargs=1, type=str, help='Whole region geometryRadar.h5 file processed with 1:1 looks. \n')
     
-    #parser.add_argument('--datatype', nargs=1, type=str, help='data type: vel, ts, maskPS, maskTC\n')
-   
     parser.add_argument('--geo-write',action='store_true', default=False, help='whether write the concatenated geometryRadar.h5 results. \n')
  
     parser.add_argument('--out-suffix', nargs=1,  default=[''], help='suffix of output name of concatenated data. \n')
 
     parser.add_argument('--outdir',dest='outdir',nargs=1, default=[],
                         help='output directory to store the concatenated results')
+    
+    parser.add_argument('--list',action='store_true', default=False, help='list the files used for concatenation and check the order of latitude. \n')
     
     return parser
 
@@ -202,7 +206,7 @@ def calculate_offset_matrix(vel_ref, lat_ref, lon_ref, vel_aff, lat_aff, lon_aff
     # calculate the nearest point
     distance, point = knn.kneighbors(find_x, n_neighbors=1, return_distance=True)
 
-    # calculate the median of difference between reference image and affilicate image
+    # calculate the median of difference between reference image and affiliate image
     #offset_overlay = m_overlay - s_overlay
     #offset = np.nanmedian(offset_overlay) 
     offset = np.array([[1]])
@@ -240,7 +244,7 @@ def concatenate_process(data1_flatten, data2_flatten, lat1_flatten, lon1_flatten
     data1_overlay_num = len(data1_tmp[mask1])
     print('The Nan PS point of reference image located in the overlay region is %d' % data1_overlay_num)
     data2_overlay_num = len(data2_tmp[mask2])
-    print('The Nan PS point of affilicate image located in the overlay region is %d' % data2_overlay_num)
+    print('The Nan PS point of affiliate image located in the overlay region is %d' % data2_overlay_num)
 
     if data1_overlay_num <= data2_overlay_num:
         data_ref = data1_tmp[mask1]
@@ -353,7 +357,7 @@ def concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten
     vel_ref, vel_ref_atr = readfile.read(data_ref, datasetName='velocity')
     vel_ref_flatten = vel_ref.flatten()
     
-    print('Read the affilicate dataset') 
+    print('Read the affiliate dataset') 
     vel_aff, vel_aff_atr = readfile.read(data_aff, datasetName='velocity')
     vel_aff_flatten = vel_aff.flatten()
 
@@ -383,7 +387,7 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten,
 
     print('Read the reference dataset') 
     ts_ref, ts_ref_atr = readfile.read(data_ref, datasetName='timeseries')
-    print('Read the affilite dataset') 
+    print('Read the affiliate dataset') 
     ts_aff, ts2_affatr = readfile.read(data_aff, datasetName='timeseries')
 
     bperp_date_ref = h5py.File(data_ref,'r')
@@ -452,7 +456,7 @@ def concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, l
 
     print('Read the reference dataset') 
     msk_ref, msk_ref_atr = readfile.read(data_ref) 
-    print('Read the affilite dataset') 
+    print('Read the affiliate dataset') 
     msk_aff, msk_aff_atr = readfile.read(data_aff)
 
     data_type = 'msk'
@@ -468,25 +472,30 @@ def concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, l
 def concatenate_geo(inps):
     """concatenate geometry data"""
     data_geo1 = inps.geo_file1[0]
-    data_geo2 = inps.geo_file2[0]    
+    data_geo2 = inps.geo_file2[0]
+
+    if data_geo1 == 'default':
+        data_geo1 = os.path.dirname(inps.patch_files[0]) + '/inputs/' + 'geometryRadar.h5'
+    if data_geo2 == 'default':
+        data_geo2 = os.path.dirname(inps.patch_files[1]) + '/inputs/' + 'geometryRadar.h5'
         
     geo_full = inps.geo_full[0]
 
-    print('Read the geometry data for the full region') 
+    print('Read the geometry data for the whole region') 
     lat_full = readfile.read(geo_full, datasetName='latitude')[0]
     lon_full = readfile.read(geo_full, datasetName='longitude')[0]
     inc_full = readfile.read(geo_full, datasetName='incidenceAngle')[0]
     azi_full = readfile.read(geo_full, datasetName='azimuthAngle')[0]
     hgt_full = readfile.read(geo_full, datasetName='height')[0]
     
-    print('Read the first dataset') 
+    print('Read the geometry data of the first given dataset') 
     lat1, lat_atr1 = readfile.read(data_geo1, datasetName='latitude')
     lon1, lon_atr1 = readfile.read(data_geo1, datasetName='longitude')
     inc1, inc_atr1 = readfile.read(data_geo1, datasetName='incidenceAngle')
     azi1, azi_atr1 = readfile.read(data_geo1, datasetName='azimuthAngle')
     hgt1, hgt_atr1 = readfile.read(data_geo1, datasetName='height')
 
-    print('Read the second dataset') 
+    print('Read the geometry data of the second given dataset') 
     lat2, lat_atr2 = readfile.read(data_geo2, datasetName='latitude')
     lon2, lon_atr2 = readfile.read(data_geo2, datasetName='longitude')
     inc2, inc_atr2 = readfile.read(data_geo2, datasetName='incidenceAngle')
@@ -503,7 +512,7 @@ def concatenate_geo(inps):
     unflatten_trans1 = flatten_trans(lat1)
     unflatten_trans2 = flatten_trans(lat2)
 
-    print('Convert to X-Y coordinate')
+    print('Convert to X-Y coordinate based on the geometry info')
     rc1 = get_position(lat1, lon1, lat_full, lon_full)
     rc2 = get_position(lat2, lon2, lat_full, lon_full)
 
@@ -662,6 +671,7 @@ def appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten
         lon_ref_flatten = lon2_flatten
         lat_aff_flatten = lat1_flatten
         lon_aff_flatten = lon1_flatten
+        print('The second dataset is the reference image')
     else:
         data_ref = 0
         data_aff = 1
@@ -671,6 +681,7 @@ def appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten
         lon_ref_flatten = lon1_flatten
         lat_aff_flatten = lat2_flatten
         lon_aff_flatten = lon2_flatten
+        print('The first dataset is the reference image')
 
     return data_ref, data_aff, rc_ref, rc_aff, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten
 
@@ -681,18 +692,60 @@ def determine_datatype(inps):
 
     return datatype
 
+def list_and_check(inps):
+    def state_judge(dataset):
+        if os.path.exists(dataset):
+            return 'True'
+        else:
+            return 'False'
+    def check_ordering(geo_data):
+        lat = readfile.read(geo_data, datasetName='latitude')[0]
+        lon = readfile.read(geo_data, datasetName ='longitude')[0]
+        if lat[0][0] < lat[-1][0] and lon[0][0] < lon[0][-1]:
+            print('{}: Correct lat and lon order'.format(geo_data)) 
+        else:
+            raise ValueError('Wrong lat/lon order! The lat should increase from north to south. The lon should increase from west to east')
+        return
+    print('Check and list the attribute dataset to be concatenated:')
+    dataset1 = inps.patch_files[0]
+    dataset2 = inps.patch_files[1]
+    print('---The first dataset is {} and the state of being is {}'.format(dataset1, state_judge(dataset1)))
+    print('---The second dataset is {} and the state of being is {}'.format(dataset2, state_judge(dataset2)))
+
+    print('Check and list the geometry dataset used:')
+    data_geo1 = inps.geo_file1[0]
+    if data_geo1 == 'default':
+        data_geo1 = os.path.dirname(inps.patch_file[0]) + './inputs/' + 'geometryRadar.h5'
+    data_geo2 = inps.geo_file2[0]
+    if data_geo2 == 'default':
+        data_geo2 = os.path.dirname(inps.patch_file[1]) + './inputs/' + 'geometryRadar.h5'
+    geo_full = inps.geo_full[0]
+    print('---The first geometry dataset is {} and the state of being is {}'.format(data_geo1, state_judge(data_geo1)))
+    print('---The second geometry dataset is {} and the state of being is {}'.format(data_geo2, state_judge(data_geo2)))
+    print('---The geometry dataset of whole region is {} and the state of being is {}'.format(geo_full, state_judge(geo_full)))
+
+    print('Check the latitude and longitude ordering')
+    check_ordering(data_geo1)   
+    check_ordering(data_geo2)   
+
+    return
+
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
 
+    if inps.list:
+        list_and_check(inps)
+        exit()
+
     datatype = determine_datatype(inps)
-    print('Data type found: ', datatype)
+    print('Data type is: ', datatype)
 
     print('Process the geometry info')
     lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2 = concatenate_geo(inps)
     if inps.geo_write:
         write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps)
 
-    print('Find which dataset is reference dataset')
+    print('Find the relative position between the two datasets')
     ref_flag = find_the_reference(rc1, rc2)
 
     print('process %s data' % datatype)
