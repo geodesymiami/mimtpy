@@ -299,7 +299,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
         val_join[row_a_r: , 0: val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: val_ref.shape[0], col_a_r: val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
-        if datatype == 'msk':
+        if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
     elif ref_flag == 5:
@@ -310,7 +310,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         val_join[row_a_r: , 0: val_ref.shape[1]] = val_ref
         val_join[0: val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: val_aff.shape[0], col_a_r: col_a_R + val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
-        if datatype == 'msk':
+        if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
     elif ref_flag == 6:
@@ -321,7 +321,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
         val_join[row_a_r: , col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: val_ref.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
-        if datatype == 'msk':
+        if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
     elif ref_flag == 7:
@@ -332,7 +332,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
         val_join[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
-        if datatype == 'msk':
+        if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
     elif ref_flag == 8:
@@ -343,7 +343,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
         val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: col_a_r + val_ref.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
-        if datatype == 'msk':
+        if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
     return val_join
@@ -459,6 +459,13 @@ def concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, l
     print('Read the affiliate dataset') 
     msk_aff, msk_aff_atr = readfile.read(data_aff)
 
+    #get the type of mask
+    import pdb
+    pdb.set_trace()
+    if msk_ref_atr['DATA_TYPE'] == 'bool': # the mask is maskTempCoh.h5
+        msk_ref = msk_ref + 0
+        msk_aff = msk_aff + 0 
+ 
     data_type = 'msk'
     msk_joined = concatenate_2D(msk_ref, msk_aff, rc_ref, rc_aff, ref_flag, data_type)
 
@@ -570,7 +577,7 @@ def write_ts(ts_joined_dataset, ts_atr, date_final, datatype, inps):
     
     return
 
-def write_mask(msk_joined, datatype, inps):
+def write_mask(msk_joined, msk_atr, datatype, inps):
     row, colm = msk_joined.shape
     
     # write simple attribution
@@ -578,6 +585,9 @@ def write_mask(msk_joined, datatype, inps):
     atr_msk['WIDTH'] = str(colm)
     atr_msk['LENGTH'] = str(row)
     atr_msk['FILE_TYPE'] = 'mask'
+    atr_msk['DATA_TYPE'] = msk_atr['DATA_TYPE']
+    if msk_atr['DATA_TYPE'] == 'bool': # the mask is maskTempCoh.h5
+        msk_joined = msk_joined > 0
 
     msk_data = dict()
     msk_data['mask'] = msk_joined
@@ -757,7 +767,7 @@ def main(iargs=None):
         write_ts(ts_join_dataset, ts_atr, date_final, datatype, inps)
     elif datatype == 'mask':
         msk_joined, msk_atr = concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
-        write_mask(msk_joined, datatype, inps)
+        write_mask(msk_joined, msk_atr, datatype, inps)
     #elif datatype == 'mask':
     #    msk_joined, msk_atr = concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
     #    write_mask(msk_joined, inps)
