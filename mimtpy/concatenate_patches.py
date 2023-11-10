@@ -288,8 +288,6 @@ def concatenate_patches(project, pthList, network, datatype, inps):
     pro_num = len(patches_dir)
     #lat_range = np.arange(lat_min, lat_max)
     patch_range = patches_ID
-    import pdb
-    pdb.set_trace()
     if pro_num == 2:
         temp_name = patch_range[0] + '_' + patch_range[1]
         #scp_args = [patches_dir[0] + '/' + network + '/' + datatype + '.h5', patches_dir[1] + '/' + network + '/' + datatype + '.h5', '--geo-file1', patches_dir[0] + '/' + network + '/geometryRadar.h5', '--geo-file2', patches_dir[1] + '/' + network + '/geometryRadar.h5', '--geo-full', geometry_Big, '--geo_write', '--out-suffix', temp_name,  '--outdir', output_dir + '/']
@@ -360,7 +358,7 @@ def getPatches(project, inps):
 
     patch_dict = {'patch': patch_obj, 'min_lon':patch_lon, 'min_lat':patch_lat}
     patch_pd = pd.DataFrame(patch_dict)
-    patch_sorted = patch_pd.sort_values(by=['min_lat','min_lon'])
+    patch_sorted = patch_pd.sort_values(by=['min_lon','min_lat'])
     patch_dir_sorted = patch_sorted['patch'].values.tolist()
 
     return patch_dir_sorted 
