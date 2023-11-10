@@ -77,11 +77,20 @@ def find_HDFEOS_fullname(datadir):
                  datafiles.append(file)
     return datafiles[0]
 
-def find_Del4PSDS_fullname(datadir):
-    """find full name for S1**_Del4PSDS.he5"""
+def find_PSDS_HDFEOS_fullname(datadir):
+    """find full name for S1**_*PSDS.he5"""
     datafiles = []
     for file in os.listdir(datadir):
-        if os.path.splitext(file)[1] == '.he5' and os.path.basename(file).split('_')[-1] == 'Del4PSDS.he5':
+        if os.path.splitext(file)[1] == '.he5' and os.path.basename(file).split('_')[-1].find('PSDS') != -1:
+            datafiles.append(file)
+
+    return datafiles[0]
+    
+def find_PS_HDFEOS_fullname(datadir):
+    """find full name for S1**_*PS.he5"""
+    datafiles = []
+    for file in os.listdir(datadir):
+        if os.path.splitext(file)[1] == '.he5' and os.path.basename(file).split('_')[-1].find('PS') != -1:
             datafiles.append(file)
 
     return datafiles[0]
