@@ -273,10 +273,17 @@ def concatenate_process(data1_flatten, data2_flatten, lat1_flatten, lon1_flatten
     return data2_flatten_adjust
 
 def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
+    def common_cal(overlap_ref, overlap_aff, offset):
+        temp = (overlap_ref + overlap_aff + offset) / 2
+        temp[np.isnan(overlap_ref)] = overlap_aff[np.isnan(overlap_ref)] + offset
+        temp[np.isnan(overlap_aff)] = overlap_ref[np.isnan(overlap_aff)]
+        return temp
+
     row_join_start, row_join_end, col_join_start, col_join_end = design_joined_matrix(rc_ref, rc_aff)
     val_join = np.ones((row_join_end - row_join_start + 1, col_join_end - col_join_start + 1)) * np.nan
     row_a_r = int(np.abs(rc_ref[0, 0] - rc_aff[0, 0]))
     col_a_r = int(np.abs(rc_ref[0, 1] - rc_aff[0, 1]))
+    print('The ref_flag is %d' % ref_flag)
     if ref_flag == 1 or ref_flag == 4:
         # join geo
         print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
@@ -286,7 +293,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         print('The offset is %f' % offset)
         val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
         val_join[row_a_r: , col_a_r: ] = val_aff + offset
-        val_join[row_a_r: val_ref.shape[0], col_a_r: val_ref.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
+        val_join[row_a_r: val_ref.shape[0], col_a_r: val_ref.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
         if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
@@ -298,7 +305,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         offset = np.nanmedian(overlap_ref - overlap_aff)
         val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
         val_join[row_a_r: , 0: val_aff.shape[1]] = val_aff + offset
-        val_join[row_a_r: val_ref.shape[0], col_a_r: val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
+        val_join[row_a_r: val_ref.shape[0], col_a_r: val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
         if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
@@ -309,7 +316,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         offset = np.nanmedian(overlap_ref - overlap_aff)
         val_join[row_a_r: , 0: val_ref.shape[1]] = val_ref
         val_join[0: val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
-        val_join[row_a_r: val_aff.shape[0], col_a_r: col_a_R + val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
+        val_join[row_a_r: val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
         if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
@@ -320,29 +327,29 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         offset = np.nanmedian(overlap_ref - overlap_aff)
         val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
         val_join[row_a_r: , col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
-        val_join[row_a_r: val_ref.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
-        if data_type == 'msk':
-            val_join[np.where(val_join == np.nan)] = 0
-
-    elif ref_flag == 7:
-        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
-        overlap_ref = val_ref[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1] - col_a_r]
-        overlap_aff = val_aff[:, col_a_r]
-        offset = np.nanmedian(overlap_ref - overlap_aff)
-        val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
-        val_join[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1]] = val_aff + offset
-        val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: val_aff.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
+        val_join[row_a_r: val_ref.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
         if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
     elif ref_flag == 8:
+        print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
+        overlap_ref = val_ref[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1] - col_a_r]
+        overlap_aff = val_aff[:, col_a_r:]
+        offset = np.nanmedian(overlap_ref - overlap_aff)
+        val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
+        val_join[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1]] = val_aff + offset
+        val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
+        if data_type == 'msk':
+            val_join[np.where(val_join == np.nan)] = 0
+
+    elif ref_flag == 7:
         print('Full the concatenated data: {}, {}'.format(val_join.shape[0], val_join.shape[1]))
         overlap_ref = val_ref[row_a_r: row_a_r + val_aff.shape[0], col_a_r:]
         overlap_aff = val_aff[:, 0: val_ref.shape[1] - col_a_r]
         offset = np.nanmedian(overlap_ref - overlap_aff)
         val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
         val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
-        val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: col_a_r + val_ref.shape[1]] = (overlap_ref + overlap_aff + offset) / 2
+        val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: val_ref.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
         if data_type == 'msk':
             val_join[np.where(val_join == np.nan)] = 0
 
@@ -460,8 +467,6 @@ def concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, l
     msk_aff, msk_aff_atr = readfile.read(data_aff)
 
     #get the type of mask
-    import pdb
-    pdb.set_trace()
     if msk_ref_atr['DATA_TYPE'] == 'bool': # the mask is maskTempCoh.h5
         msk_ref = msk_ref + 0
         msk_aff = msk_aff + 0 
@@ -569,9 +574,10 @@ def write_ts(ts_joined_dataset, ts_atr, date_final, datatype, inps):
     outname = inps.out_suffix[0]
     file_name = os.path.basename(inps.patch_files[0])
     if len(outname) is 0:
-        ts_filename = output_dir + '/' + file_name.split('.')[0] +  '.h5'
+        #ts_filename = output_dir + '/' + file_name.split('.')[0] +  '.h5'
+        ts_filename = output_dir + '/' + datatype +  '.h5'
     else:
-        ts_filename = output_dir + '/' + file_name.split('.')[0] + '_' + outname + '.h5'
+        ts_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
 
     writefile.write(datasetDict=ts_joined_dataset, out_file=ts_filename, metadata=atr_ts)
     
@@ -596,9 +602,10 @@ def write_mask(msk_joined, msk_atr, datatype, inps):
     outname = inps.out_suffix[0]
     file_name = os.path.basename(inps.patch_files[0])
     if len(outname) is 0:
-        msk_filename = output_dir + '/' + file_name.split('.')[0] +  '.h5'
+        msk_filename = output_dir + '/' + datatype +  '.h5'
     else:
-        msk_filename = output_dir + '/' + file_name.split('.')[0] + '_' + outname + '.h5'
+        #msk_filename = output_dir + '/' + file_name.split('.')[0] + '_' + outname + '.h5'
+        msk_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
 
     writefile.write(datasetDict=msk_data, out_file=msk_filename, metadata=atr_msk)
      
