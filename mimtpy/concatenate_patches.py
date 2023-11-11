@@ -267,7 +267,7 @@ def concatenate_patches(project, pthList, network, datatype, inps):
                 dsDict['date'] = date_intersection
                 dsDict['timeseries'] = data_ts
                 ts_atr['FILE_TYPE'] = 'timeseries'
-                ts_atr['REF_DATE'] = str(date_intersection.astype(np.int)[0]) 
+                ts_atr['REF_DATE'] = str(date_intersection.astype(np.int64)[0]) 
                 writefile.write(dsDict, out_file=outfile, metadata=ts_atr)
     
     # create the output dir
