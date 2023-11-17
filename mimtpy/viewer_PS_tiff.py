@@ -15,6 +15,7 @@ import geopandas
 import pandas as pd
 import copy
 from shapely.geometry import box
+from pyproj import CRS
 from matplotlib.backend_bases import MouseButton
 from matplotlib import widgets
 import scipy
@@ -82,6 +83,8 @@ def create_parser():
     parser.add_argument('--interactive',action='store_true', default=False, help='whether displace interactive map. \n')
 
     parser.add_argument('--display',action='store_true', default=False, help='whether displace the final plot. \n')
+    
+    parser.add_argument('--buffer', nargs='*', type=float, help='buffer distance. Unit is meter.\n')
     
     return parser
 
@@ -182,24 +185,70 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
 
         # plot the high spatial resolution optical image
         show(bg_tif, ax=ax1, alpha=0.8)
-        # plot PS points
-        gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=5)
-        if gdf_obj_s is not None:
-            gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
         # plot shp file
         if inps.shp_file is not None:
             shp_file = geopandas.read_file(inps.shp_file[0])
             shp_file_clip = shp_file.clip(geo_box)
-            shp_file_clip.plot(color='yellow', ax=ax1, linestyle='solid', linewidth=0.3)
+            old_crs = shp_file.crs
+            new_crs = CRS('EPSG:3857')
+            if inps.buffer is not None:
+                shp_file_clip = shp_file_clip.to_crs(new_crs)
+                shp_file_clip_buffer = shp_file_clip.buffer(inps.buffer[0])
+                shp_file_clip_buffer = shp_file_clip_buffer.to_crs(old_crs)
 
+                # mask the PS points according to the buffer
+                gdf_obj_msk = geopandas.clip(gdf_obj, shp_file_clip_buffer)
+                if gdf_obj_s is not None:
+                    gdf_obj_s_msk = geopandas.clip(gdf_obj_s, shp_file_clip_buffer)
+                # plot the masked PS points
+                gdf_obj_msk.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+                if gdf_obj_s is not None:
+                    gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+            
+                shp_file_clip = shp_file_clip.to_crs(old_crs)
+                shp_file_clip.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
+            else:
+                # plot PS points
+                gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+                if gdf_obj_s is not None:
+                    gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+                
+                shp_file_clip.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
+                #shp_file_clip.plot(ax=ax1, color='black', marker='s', markersize=10, alpha=0.3)
+        else:          
+            # plot PS points
+            gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+            if gdf_obj_s is not None:
+                gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+    
     else:
-        shpfile_clip = file_src.clip(geo_box)
-        # plot the shape file background
-        shpfile_clip.plot(ax=ax1)
-        # plot the PS points
-        gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=5)
-        if gdf_obj_s is not None:
-            gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+        shp_file_clip = file_src.clip(geo_box)
+        old_crs = file_src.crs
+        new_crs = CRS('EPSG:3857')
+        if inps.buffer is not None:
+            shp_file_clip = shp_file_clip.to_crs(new_crs)
+            shp_file_clip_buffer = shp_file_clip.buffer(inps.buffer[0])
+            shp_file_clip_buffer = shp_file_clip_buffer.to_crs(old_crs)
+
+            # mask the PS points according to the buffer
+            gdf_obj_msk = geopandas.clip(gdf_obj, shp_file_clip_buffer)
+            if gdf_obj_s is not None:
+                gdf_obj_s_msk = geopandas.clip(gdf_obj_s, shp_file_clip_buffer)
+            # plot the masked PS points
+            gdf_obj_msk.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+            if gdf_obj_s is not None:
+                gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+        
+            shp_file_clip = shp_file_clip.to_crs(old_crs)
+            shp_file_clip.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
+        else:
+            # plot PS points
+            gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+            if gdf_obj_s is not None:
+                gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+            
+            shp_file_clip.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
+            #shp_file_clip.plot(ax=ax1, color='black', marker='s', markersize=10, alpha=0.3)
          
     ax1.tick_params(which='both', direction='in', labelsize=8, bottom=True, top=True, left=True, right=True)
     cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
@@ -412,7 +461,7 @@ def read_stamps_data(input_file, geo_file, ts_file=None):
 
 def main():
     inps = cmd_line_parse()
-
+    
     if len(inps.input_file) == 1:
         file_extension = os.path.splitext(inps.input_file[0])[1] 
         if file_extension == '.h5':
@@ -476,7 +525,7 @@ def main():
         pos_row, pos_col = subset_PS_poi(lat_min, lat_max, lon_min, lon_max, lat_data, lon_data, vel_mask)
         lat_sub = lat_data[pos_row, pos_col] 
         lon_sub = lon_data[pos_row, pos_col] 
-        vel_sub = vel_data[pos_row, pos_col] 
+        vel_sub = vel_data[pos_row, pos_col]
         
         if len(inps.input_file) == 2:
             pos_row_s, pos_col_s = subset_PS_poi(lat_min, lat_max, lon_min, lon_max, lat_data_s, lon_data_s, vel_mask_s)
