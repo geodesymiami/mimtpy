@@ -43,7 +43,7 @@ EXAMPLE = """example:
 
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --ts_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/timeseries.h5 --interactive 
 
-    viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/SanHe.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.8 40.08 116.75 117.25 --vlim -3 3 --output vel_sanhe.png --outdir ./ --shp_type polygon
+    viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/SanHe.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.8 40.08 116.75 117.25 --vlim -3 3 --output vel_sanhe.png --outdir ./ --shp_type polygon  --save_gdf
 
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output vel_ttest.png --outdir ./ --shp_type line --buffer 100
 
@@ -91,6 +91,8 @@ def create_parser():
     parser.add_argument('--buffer', nargs='*', type=float, help='buffer distance. Unit is meter.\n')
     
     parser.add_argument('--shp_type', nargs='*', type=str, help='The type of shapefile. Could be polygon or line.\n')
+    
+    parser.add_argument('--save_gdf', nargs='*', type=str, help='Whether save the masked PS point as geojson file. Could be used when the shapefile is polygon or the buffer option is used for line shapefile\n')
     
     return parser
 
@@ -237,8 +239,19 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
             gdf_obj_msk.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
             if gdf_obj_s is not None:
                 gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
-            
+
             shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
+            # save the masked gdf
+            if inps.save_gdf is not None:
+                if len(inps.input_file) == 1:
+                    out_gdf =inps.outdir + '/' + os.path.basename(inps.input_file[0]).split('.')[0] + '.geojson'
+                    gdf_obj_msk.to_file(out_gdf, driver='GeoJSON')
+                elif len(inps.input_file) == 2:
+                    out_gdf =inps.outdir + '/' + os.path.basename(inps.input_file[0]).split('.')[0] + '.geojson'
+                    gdf_obj_msk.to_file(out_gdf, driver='GeoJSON')
+                    out_gdf_s =inps.outdir + '/' + os.path.basename(inps.input_file[1]).split('.')[0] + '.geojson'
+                    gdf_obj_s_msk.to_file(out_gdf_s, driver='GeoJSON')
+            
         else:          
             # plot PS points
             gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
@@ -259,6 +272,17 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
         
         shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
          
+        # save the masked gdf
+        if inps.save_gdf is not None:
+            if len(inps.input_file) == 1:
+                out_gdf =inps.outdir + '/' + os.path.basename(inps.input_file[0]).split('.')[0] + '.geojson'
+                gdf_obj_msk.to_file(out_gdf, driver='GeoJSON')
+            elif len(inps.input_file) == 2:
+                out_gdf =inps.outdir + '/' + os.path.basename(inps.input_file[0]).split('.')[0] + '.geojson'
+                gdf_obj_msk.to_file(out_gdf, driver='GeoJSON')
+                out_gdf_s =inps.outdir + '/' + os.path.basename(inps.input_file[1]).split('.')[0] + '.geojson'
+                gdf_obj_s_msk.to_file(out_gdf_s, driver='GeoJSON')
+
     ax1.tick_params(which='both', direction='in', labelsize=8, bottom=True, top=True, left=True, right=True)
     cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
     sm1 = plt.cm.ScalarMappable(cmap=cmap)
