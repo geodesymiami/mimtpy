@@ -49,7 +49,7 @@ EXAMPLE = """example:
 
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output vel_ttest.png --outdir ./ --shp_type line
 
-    viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --shp_file ./shpfile/road.shp --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3
+    viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --shp_file ./shpfile/road.shp --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3 --markersize 0.1
     
     viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3  
 
@@ -93,6 +93,8 @@ def create_parser():
     parser.add_argument('--shp_type', nargs='*', type=str, help='The type of shapefile. Could be polygon or line.\n')
     
     parser.add_argument('--save_gdf', nargs='*', type=str, help='Whether save the masked PS point as geojson file. Could be used when the shapefile is polygon or the buffer option is used for line shapefile\n')
+    
+    parser.add_argument('--markersize', nargs='?', type=float, help='Marker size of PS points\n')
     
     return parser
 
@@ -189,6 +191,11 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
     fig, axes = plt.subplots(1, 1, figsize=figure_size)
     ax1 = axes
 
+    if inps.markersize is not None:
+        markersize = inps.markersize
+    else:
+        markersize = 1
+
     if inps.vlim is not None:
         vmin = inps.vlim[0]
         vmax = inps.vlim[1]
@@ -236,9 +243,9 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
                 shpfile_output, gdf_obj_msk = shapefile_process(inps, shp_file_clip, gdf_obj)
  
             # plot the masked PS points
-            gdf_obj_msk.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+            gdf_obj_msk.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=markersize)
             if gdf_obj_s is not None:
-                gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+                gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=markersize, alpha=0.7)
 
             shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
             # save the masked gdf
@@ -254,9 +261,9 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
             
         else:          
             # plot PS points
-            gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+            gdf_obj.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=markersize)
             if gdf_obj_s is not None:
-                gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+                gdf_obj_s.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=markersize, alpha=0.7)
     
     else:
         shp_file_clip = file_src.clip(geo_box)
@@ -266,9 +273,9 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
             shpfile_output, gdf_obj_msk = shapefile_process(inps, shp_file_clip, gdf_obj)
 
         # plot the masked PS points
-        gdf_obj_msk.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=1)
+        gdf_obj_msk.plot('Value', ax=ax1, cmap=cmap, vmin=vmin, vmax=vmax, markersize=markersize)
         if gdf_obj_s is not None:
-            gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=8, alpha=0.7)
+            gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=markersize, alpha=0.7)
         
         shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
          
