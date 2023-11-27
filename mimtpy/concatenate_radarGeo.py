@@ -303,6 +303,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         overlap_ref = val_ref[row_a_r:, 0: val_aff.shape[1] - col_a_r]
         overlap_aff = val_aff[0: val_ref.shape[0] - row_a_r, col_a_r: ]
         offset = np.nanmedian(overlap_ref - overlap_aff)
+        print('The offset is %f' % offset)
         val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
         val_join[row_a_r: , 0: val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: val_ref.shape[0], col_a_r: val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
@@ -314,6 +315,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         overlap_ref = val_ref[0: val_aff.shape[0] - row_a_r, col_a_r: col_a_r + val_aff.shape[1]]
         overlap_aff = val_aff[row_a_r:, :]
         offset = np.nanmedian(overlap_ref - overlap_aff)
+        print('The offset is %f' % offset)
         val_join[row_a_r: , 0: val_ref.shape[1]] = val_ref
         val_join[0: val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
@@ -325,6 +327,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         overlap_ref = val_ref[row_a_r: , col_a_r: col_a_r + val_aff.shape[1]]
         overlap_aff = val_aff[0: val_ref.shape[0] - row_a_r, :]
         offset = np.nanmedian(overlap_ref - overlap_aff)
+        print('The offset is %f' % offset)
         val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
         val_join[row_a_r: , col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: val_ref.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
@@ -336,6 +339,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         overlap_ref = val_ref[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1] - col_a_r]
         overlap_aff = val_aff[:, col_a_r:]
         offset = np.nanmedian(overlap_ref - overlap_aff)
+        print('The offset is %f' % offset)
         val_join[0: val_ref.shape[0], col_a_r: ] = val_ref
         val_join[row_a_r: row_a_r + val_aff.shape[0], 0: val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: val_aff.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
@@ -347,6 +351,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
         overlap_ref = val_ref[row_a_r: row_a_r + val_aff.shape[0], col_a_r:]
         overlap_aff = val_aff[:, 0: val_ref.shape[1] - col_a_r]
         offset = np.nanmedian(overlap_ref - overlap_aff)
+        print('The offset is %f' % offset)
         val_join[0: val_ref.shape[0], 0: val_ref.shape[1]] = val_ref
         val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: col_a_r + val_aff.shape[1]] = val_aff + offset
         val_join[row_a_r: row_a_r + val_aff.shape[0], col_a_r: val_ref.shape[1]] = common_cal(overlap_ref, overlap_aff, offset)
@@ -395,7 +400,11 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten,
     print('Read the reference dataset') 
     ts_ref, ts_ref_atr = readfile.read(data_ref, datasetName='timeseries')
     print('Read the affiliate dataset') 
-    ts_aff, ts2_affatr = readfile.read(data_aff, datasetName='timeseries')
+    ts_aff, ts_aff_atr = readfile.read(data_aff, datasetName='timeseries')
+
+    # check whether two timeseries have same ref_date
+    if ts_ref_atr['REF_DATE'] != ts_aff_atr['REF_DATE']:
+        raise ValueError('Two timeseries datasets should have same REF_DATE. PLease change!')
 
     bperp_date_ref = h5py.File(data_ref,'r')
     bperp_ref = bperp_date_ref['/bperp']
@@ -542,11 +551,12 @@ def concatenate_geo(inps):
 def write_vel(vel_joined, vel_atr, datatype, inps):
     
     row, colm = vel_joined.shape
-
     atr_vel = dict()
     atr_vel['WIDTH'] = str(colm)
     atr_vel['LENGTH'] = str(row)
     atr_vel['FILE_TYPE'] = 'velocity'
+
+    #vel_atr['FILE_TYPE'] = 'velocity'
     
     vel_data = dict()
     vel_data['velocity'] = vel_joined
@@ -569,6 +579,7 @@ def write_ts(ts_joined_dataset, ts_atr, date_final, datatype, inps):
     atr_ts['WIDTH'] = str(colm)
     atr_ts['LENGTH'] = str(row)
     atr_ts['FILE_TYPE'] = 'timeseries'
+    #ts_atr['FILE_TYPE'] = 'timeseries'
     
     output_dir = inps.outdir[0]
     outname = inps.out_suffix[0]
@@ -591,6 +602,7 @@ def write_mask(msk_joined, msk_atr, datatype, inps):
     atr_msk['WIDTH'] = str(colm)
     atr_msk['LENGTH'] = str(row)
     atr_msk['FILE_TYPE'] = 'mask'
+    #msk_atr['FILE_TYPE'] = 'mask'
     atr_msk['DATA_TYPE'] = msk_atr['DATA_TYPE']
     if msk_atr['DATA_TYPE'] == 'bool': # the mask is maskTempCoh.h5
         msk_joined = msk_joined > 0
