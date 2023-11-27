@@ -43,6 +43,8 @@ EXAMPLE = """example:
 
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --ts_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/timeseries.h5 --interactive 
 
+    viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --ts_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/timeseries.h5 --interactive --save_txt --outdir ./ 
+
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/SanHe.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.8 40.08 116.75 117.25 --vlim -3 3 --output vel_sanhe.png --outdir ./ --shp_type polygon  --save_gdf
 
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output vel_ttest.png --outdir ./ --shp_type line --buffer 100
@@ -93,6 +95,8 @@ def create_parser():
     parser.add_argument('--shp_type', nargs='*', type=str, help='The type of shapefile. Could be polygon or line.\n')
     
     parser.add_argument('--save_gdf', nargs='*', type=str, help='Whether save the masked PS point as geojson file. Could be used when the shapefile is polygon or the buffer option is used for line shapefile\n')
+    
+    parser.add_argument('--save_txt', action='store_true', default=False, help='For interactive mode, whether save the displacement timeseries of chosen points as txt\n')
     
     parser.add_argument('--markersize', nargs='?', type=float, help='Marker size of PS points\n')
     
@@ -404,6 +408,12 @@ class interactive_map:
         geoinfo_str = 'The latitude is ' + str(poi_lat) + '\nThe longitude is ' + str(poi_lon)
         print(geoinfo_str)
         self.ax_pts.text(1, -5, geoinfo_str, fontsize=10, bbox=dict(boxstyle='round', facecolor='white', edgecolor='gray', alpha=0.7))
+
+        # save ts_dat
+        if self.inps.save_txt:
+            print('saving the displacement timeseries of chosen PS point')
+            txt_name = self.inps.outdir[0] + '/TS_Lat' + str(round(poi_lat, 5)) + '_Lon' + str(round(poi_lon, 5)) + '_ts.txt'
+            np.savetxt(txt_name, (self.ts_sub[:, pos_row].reshape(-1, 1))*100, fmt='%.5f', delimiter=',', newline='\n', header='The unit is cm')
 
         # update figure
         self.fig_pts.canvas.draw()
