@@ -32,9 +32,11 @@ Please Note
 
 EXAMPLE = """example:
 
-    concatenate_patches.py --project BJSenAT142 --subproject Mentougou --network network_delaunay_4 --datatype vel --PSDS --mask
+    concatenate_patches.py --project BJSenAT142 --subproject Mentougou --network network_delaunay_4 --datatype velocity --PSDS --mask
   
-    concatenate_patches.py --project TangshanSenAT69 --network network_delaunay_4 --datatype ts --PS 
+    concatenate_patches.py --project BJSenAT142 --subproject Mentougou --network network_delaunay_4 --datatype mask --PSDS --mask
+  
+    concatenate_patches.py --project TangshanSenAT69 --network network_delaunay_4 --datatype timeseries --PS 
 """
 
 def create_parser():
@@ -254,6 +256,8 @@ def concatenate_patches(project, pthList, network, datatype, inps):
                 data_ts = displacement[date_position,:,:]
                 data_bp = np.array(data_bperp[date_position],dtype=np.float64)
                 date_intersection = np.array(date_intersection, dtype=np.string_)
+                # calculating timeseries referencing the first date 
+                data_ts = data_ts - data_ts[0,:,:]
 
                 # mask data
                 if inps.mask:
