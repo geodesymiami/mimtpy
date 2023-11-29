@@ -35,10 +35,8 @@ https://skywatch.com/free-sources-of-satellite-data/
 
 EXAMPLE = """example:
 
-    viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --two_poi 39.6 118.2 39.7 118.3 --output two_poi.png --outdir ./ 
+    viewer_PS_tiff.py velocity.h5 --ts_file timeseries.h5 --geo_file ./inputs/geometryRadar.h5 --point 39.6 118.2 --outdir ./ 
     
-    viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --output subset.png --outdir ./ 
-
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --output subset.png --outdir ./ 
 
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --ts_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/timeseries.h5 --interactive 
@@ -74,9 +72,9 @@ def create_parser():
                         help='shapefile of vector. For example, *.osm files downloaded from OpenStreetMap can be converted to *.shp formate by QGIS'
                         ' and plotted with PS points.\n')
     
-    parser.add_argument('--two_poi', nargs='*', type=float, help='lat1 lon1 lat2 lon2 of two points.\n')
+    parser.add_argument('--point', nargs='*', type=float, help='lat lon of the chosen point.\n')
     
-    parser.add_argument('--subset', nargs='*', type=float, help='lat1 lat2 lon1 lon2 of two points.\n')
+    parser.add_argument('--subset', nargs='*', type=float, help='lat1 lat2 lon1 lon2 of the subset region.\n')
     
     parser.add_argument('--vlim', nargs='*', type=float, help='velocity range to display.\n')
    
@@ -509,6 +507,11 @@ def read_stamps_data(input_file, geo_file, ts_file=None):
     else:
         return vel_data, lat_data, lon_data
 
+def save_PS_ts(vel_val, ts_val, lat_poi, lon_poi, inps):
+    outname = inps.outdir[0] + '/PS_' + str(lat_poi) + '_' + str(lon_poi) + '.txt'
+    header = 'The velocity is :' + str(vel_val) + 'The unit of velocity and displacement is meter'
+    np.savetxt(outname, ts_val.reshape(-1, 1), fmt='%.5f', delimiter=',', newline='\n', header=header)
+
 def main():
     inps = cmd_line_parse()
     
@@ -549,25 +552,19 @@ def main():
         # judge the projection of shapefile
         #if file_crs != 'EPSG:4326':
         #    raise ValueError('The projection of shapefile should be EPSG:4326')
-    else:
+    elif inps.point is None:
         raise ValueError('Please at least provide one of the Geotiff file and shapefile file!') 
 
-    if inps.two_poi is not None:
-        lat_p1 = inps.two_poi[0]
-        lon_p1 = inps.two_poi[1]
-        lat_p2 = inps.two_poi[2]
-        lon_p2 = inps.two_poi[3]
-        pos_row1, pos_col1 = find_row_col(lat_data, lon_data, lat_p1, lon_p1)
-        pos_row2, pos_col2 = find_row_col(lat_data, lon_data, lat_p2, lon_p2)
+    if inps.point is not None:
+        lat_poi = inps.point[0]
+        lon_poi = inps.point[1]
+        pos_row, pos_col = find_row_col(lat_data, lon_data, lat_poi, lon_poi)
 
-        vel_val1 = vel_mask[pos_row1, pos_col1]
-        vel_val2 = vel_mask[pos_row2, pos_col2]
+        vel_val = vel_mask[pos_row, pos_col]
+        ts_val = ts_data[:, pos_row, pos_col]
 
-        lat_sub = np.array([lat_p1, lat_p2])
-        lon_sub = np.array([lon_p1, lon_p2])
-        vel_sub = np.array([vel_val1[0], vel_val2[0]])
+        save_PS_ts(vel_val, ts_val, lat_poi, lon_poi, inps)
 
-        gdf_obj = generate_geopandas(lat_sub, lon_sub, vel_sub, file_crs)
 
     elif inps.subset is not None:
         lat_min = inps.subset[0] 
@@ -601,7 +598,7 @@ def main():
         print('Active the interactive Map for the subset region!')
         map_obj = interactive_map(file_src=file_src, gdf_obj=gdf_obj, ts_sub=ts_sub, inps=inps)
         map_obj.plot() 
-    else:
+    elif inps.point is None:
         if len(inps.input_file) == 1:
             plot_tiff_PS(file_src, gdf_obj, inps)
         else:
