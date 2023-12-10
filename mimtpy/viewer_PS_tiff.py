@@ -19,7 +19,7 @@ from pyproj import CRS
 from matplotlib.backend_bases import MouseButton
 from matplotlib import widgets
 import scipy
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Polygon, MultiLineString, MultiPoint
 
 from mintpy.utils import readfile, ptime, writefile, utils as ut
 from mintpy.objects import timeseries
@@ -47,14 +47,14 @@ EXAMPLE = """example:
 
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output vel_ttest.png --outdir ./ --shp_type line --buffer 100
 
+    viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output PS_density.png --outdir ./ --shp_type line --buffer 100 --density --interval 1000
+
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output vel_ttest.png --outdir ./ --shp_type line
 
     viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --shp_file ./shpfile/road.shp --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3 --markersize 0.1
     
     viewer_PS_tiff.py ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --geo_file ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3  
 
-    viewer_PS_tiff.py ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/velocity_msk.h5 ./stamps_results/2y/ps_plot_v.mat --tiff_file ./TangshanSenDT149/Tangshan_NE_patch.tif --shp_file ./shpfile/road.shp --geo_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/inputs/geometryRadar.h5 ./stamps_results/2y/ps2.mat --subset 39.50 39.55 118.30 118.35 --output tiff_Try.png --outdir ./ --vlim -3 3
-    
 """
 
 def create_parser():
@@ -97,6 +97,10 @@ def create_parser():
     parser.add_argument('--save_txt', action='store_true', default=False, help='For interactive mode, whether save the displacement timeseries of chosen points as txt\n')
     
     parser.add_argument('--markersize', nargs='?', type=float, help='Marker size of PS points\n')
+    
+    parser.add_argument('--density',action='store_true', default=False, help='whether calculate the PS density for line. \n')
+    
+    parser.add_argument('--interval', nargs='*', type=float, help='distance for each line segment. Unit is meter\n')
     
     return parser
 
@@ -153,6 +157,109 @@ def generate_geopandas(lat_sub, lon_sub, vel_sub, crs):
     )
 
     return gdf
+
+def cal_density(shp_data, gdf_obj, buf_dis, interval, inps):
+    def find_split_point(p1, p2, rate):
+        """ find split point by rate """
+        x = p1[0] + (p2[0] - p1[0]) * rate
+        y = p1[1] + (p2[1] - p1[1]) * rate
+        return x, y
+
+    def divide_line(shp_file, distance, buf_dis):
+        shp_file_geo = shp_file['geometry']
+    
+        all_line_string = []
+        for m_line in shp_file_geo:
+            m_line_seg = m_line.segmentize(max_segment_length=distance)
+            for seq in range(len(m_line_seg.geoms)):
+                line = m_line_seg.geoms[seq]
+                x_arr, y_arr = line.xy
+    
+                curr_line = [[x_arr[0], y_arr[0]]]
+                dist = 0
+                for i in range(1, len(x_arr)):
+                    seg_length = ((curr_line[-1][0] - x_arr[i]) ** 2 + (curr_line[-1][1] - y_arr[i]) ** 2) ** 0.5
+                    if dist + seg_length > distance:
+                        x, y = find_split_point(curr_line[-1], [x_arr[i], y_arr[i]], (distance - dist) / seg_length)
+                        curr_line.append([x, y])
+                        all_line_string.append(curr_line)
+    
+                        curr_line = [[x, y], [x_arr[i], y_arr[i]]]
+                        dist = distance - dist
+                    else:
+                        curr_line.append([x_arr[i], y_arr[i]])
+                        dist += seg_length
+                if len(curr_line) >= 2:
+                    all_line_string.append(curr_line)
+    
+        key_point = MultiPoint([x[-1] for x in all_line_string] + [x[0] for x in all_line_string])
+        new_mline = MultiLineString(all_line_string)
+        # discrete the MultiLineString
+        dis_mline = list(new_mline.geoms)
+        gpd_result = geopandas.GeoSeries(dis_mline)
+    
+        buf = gpd_result.buffer(buf_dis)
+    
+        return buf    
+
+    def buffer_density(org_crs, val_gdf, buffer_meter, fig_name):
+        buffer_meter = geopandas.GeoDataFrame(geometry=buffer_meter, crs = 'EPSG:3857')
+        buffer = buffer_meter.to_crs(org_crs)
+    
+        PS_density = copy.deepcopy(buffer)
+    
+        PS_density['density'] = 0
+        density_min = 0
+        density_max = 0
+        line_num = buffer_meter.shape[0]
+        for num in np.arange(line_num):
+            area = buffer_meter.iloc[num, 0].area
+            val_gdf_msk = geopandas.clip(val_gdf, buffer.iloc[num, 0])
+            PS_num = val_gdf_msk.shape[0]
+            density = PS_num / area
+            density_min = np.min([density_min, density])
+            density_max = np.max([density_max, density])
+            PS_density.iloc[num, 1] = density
+   
+        print(PS_density)
+        cmap = plt.cm.jet
+        figure_size = [8.0, 8.0]
+        fig, axes = plt.subplots(1, 1, figsize=figure_size)
+        ax2 = axes
+        PS_density.plot('density', ax=ax2)
+        #val_gdf_msk.plot('Value', ax=ax1, markersize=5)
+
+        ax2.tick_params(which='both', direction='in', labelsize=8, bottom=True, top=True, left=True, right=True)
+        cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
+        sm1 = plt.cm.ScalarMappable(cmap=cmap)
+        sm1.set_array([])
+        sm1.set_clim(vmin=density_min, vmax=density_max)
+        cb = fig.colorbar(sm1, cax1, orientation='vertical', format='%.2f')
+        cb.ax.tick_params(labelsize=10)
+        cb.set_ticks(np.linspace(density_min, density_max, 0.0005))
+        font2 = {'family': 'serif',
+                 'weight': 'normal',
+                 'size': 10.}
+        cb.set_label('density', fontdict=font2)
+
+        # set axis
+        font1 = {'family': 'serif',
+                 'weight': 'normal',
+                 'size': 10.}
+        ax2.set_xlabel('Longitude', font1)
+        ax2.set_ylabel('Latitude', font1)
+        labels = ax2.get_xticklabels() + ax2.get_yticklabels()
+        [label.set_fontname('serif') for label in labels]
+
+        fig.savefig(fig_name, dpi=300, bbox_inches='tight')
+
+    new_crs = CRS("EPSG:3857")
+    shp_file = shp_data.to_crs(new_crs)
+    buffer_meter = divide_line(shp_file, interval, buf_dis)
+    org_crs = CRS("EPSG:4326")
+
+    fig_name = inps.outdir + '/' + inps.output
+    buffer_density(org_crs, gdf_obj, buffer_meter, fig_name)
 
 def shapefile_process(inps, shp_file_clip, gdf_obj, gdf_obj_s=None):
     shp_type = inps.shp_type[0]
@@ -239,6 +346,12 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
         if inps.shp_file is not None:
             shp_file = geopandas.read_file(inps.shp_file[0])
             shp_file_clip = shp_file.clip(geo_box)
+            if inps.density:
+                interval = inps.interval[0]
+                buf_dis = inps.buffer[0]
+                cal_density(shp_file_clip, gdf_obj, buf_dis, interval, inps)
+                exit()
+            
             if gdf_obj_s is not None:            
                 shpfile_output, gdf_obj_msk, gdf_obj_s_msk = shapefile_process(inps, shp_file_clip, gdf_obj, gdf_obj_s)
             else:
@@ -249,7 +362,7 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
             if gdf_obj_s is not None:
                 gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=markersize, alpha=0.7)
 
-            shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
+            shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.1)
             # save the masked gdf
             if inps.save_gdf is not None:
                 if len(inps.input_file) == 1:
@@ -269,6 +382,12 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
     
     else:
         shp_file_clip = file_src.clip(geo_box)
+        if inps.density:
+            interval = inps.interval[0]
+            buf_dis = inps.buffer[0]
+            cal_density(shp_file_clip, gdf_obj, buf_dis, interval, inps)
+            exit()
+        
         if gdf_obj_s is not None:            
             shpfile_output, gdf_obj_msk, gdf_obj_s_msk = shapefile_process(inps, shp_file_clip, gdf_obj, gdf_obj_s)
         else:
@@ -279,7 +398,7 @@ def plot_tiff_PS(file_src, gdf_obj, inps, gdf_obj_s=None):
         if gdf_obj_s is not None:
             gdf_obj_s_msk.plot('Value', ax=ax1, cmap=plt.cm.gray, vmin=vmin, vmax=vmax, markersize=markersize, alpha=0.7)
         
-        shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.3)
+        shpfile_output.plot(color='black', ax=ax1, linestyle='solid', linewidth=0.1)
          
         # save the masked gdf
         if inps.save_gdf is not None:
