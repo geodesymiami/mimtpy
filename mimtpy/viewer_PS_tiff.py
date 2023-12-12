@@ -16,6 +16,7 @@ import pandas as pd
 import copy
 from shapely.geometry import box
 from pyproj import CRS
+from pyproj import Geod
 from matplotlib.backend_bases import MouseButton
 from matplotlib import widgets
 import scipy
@@ -159,6 +160,14 @@ def generate_geopandas(lat_sub, lon_sub, vel_sub, crs):
     return gdf
 
 def cal_density(shp_data, gdf_obj, buf_dis, interval, inps):
+    def statistic_cal(PS_num):
+        PS_num = PS_num.values
+        PS_low = len(np.where(PS_num <= 100)[0])
+        PS_middle = len(np.where((PS_num<=500) & (PS_num > 100))[0])
+        PS_high = len(np.where(PS_num > 500)[0])
+
+        return PS_low / (PS_low + PS_middle + PS_high), PS_middle / (PS_low + PS_middle + PS_high), PS_high / (PS_low + PS_middle + PS_high)
+
     def find_split_point(p1, p2, rate):
         """ find split point by rate """
         x = p1[0] + (p2[0] - p1[0]) * rate
@@ -213,42 +222,62 @@ def cal_density(shp_data, gdf_obj, buf_dis, interval, inps):
         density_max = 0
         line_num = buffer_meter.shape[0]
         for num in np.arange(line_num):
-            area = buffer_meter.iloc[num, 0].area
-            val_gdf_msk = geopandas.clip(val_gdf, buffer.iloc[num, 0])
+            geod = Geod(ellps='WGS84')
+            area = abs(geod.geometry_area_perimeter(buffer.iloc[num, 0])[0]) / 1000000
+            val_gdf_buf = geopandas.clip(val_gdf, buffer.iloc[num, 0])
+            # mask the Nan PS pixels
+            val_gdf_msk = val_gdf_buf[val_gdf_buf['Value'].notna()]
             PS_num = val_gdf_msk.shape[0]
             density = PS_num / area
+            #density = PS_num
             density_min = np.min([density_min, density])
             density_max = np.max([density_max, density])
             PS_density.iloc[num, 1] = density
    
-        print(PS_density)
         cmap = plt.cm.jet
-        figure_size = [8.0, 8.0]
-        fig, axes = plt.subplots(1, 1, figsize=figure_size)
-        ax2 = axes
-        PS_density.plot('density', ax=ax2)
+        figure_size = [16.0, 8.0]
+        fig, axes = plt.subplots(1, 2, figsize=figure_size)
+        ax2 = axes[0]
+        ax3 = axes[1]
+        PS_density.plot('density', ax=ax2, kind='hist', bins=10)
         #val_gdf_msk.plot('Value', ax=ax1, markersize=5)
 
-        ax2.tick_params(which='both', direction='in', labelsize=8, bottom=True, top=True, left=True, right=True)
-        cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
-        sm1 = plt.cm.ScalarMappable(cmap=cmap)
-        sm1.set_array([])
-        sm1.set_clim(vmin=density_min, vmax=density_max)
-        cb = fig.colorbar(sm1, cax1, orientation='vertical', format='%.2f')
-        cb.ax.tick_params(labelsize=10)
-        cb.set_ticks(np.linspace(density_min, density_max, 0.0005))
-        font2 = {'family': 'serif',
-                 'weight': 'normal',
-                 'size': 10.}
-        cb.set_label('density', fontdict=font2)
-
-        # set axis
+        ax2.tick_params(which='both', direction='in', labelsize=10, bottom=True, top=True, left=True, right=True)
+    
+        PS_low, PS_middle, PS_high = statistic_cal(PS_density['density'])
+        index_bar = [1, 2, 3]
+        PS_class = [PS_low*100, PS_middle*100, PS_high*100]
+        # design the color
+        #cmap = plt.get_cmap('jet')
         font1 = {'family': 'serif',
                  'weight': 'normal',
                  'size': 10.}
-        ax2.set_xlabel('Longitude', font1)
-        ax2.set_ylabel('Latitude', font1)
+        colors = [cmap(i) for i in np.linspace(0, 1, 3)]
+        ax3.bar(index_bar, PS_class, width=0.3, color=colors)
+        ax3.set_xlabel('Class', font1)
+        ax3.set_ylabel('Percent', font1)
+        ax3.set_xticks(np.arange(3) + 1)
+        ax3.set_xticklabels(('Low', 'Middle', 'High'))
+        ax3.set_yticks(np.arange(0,101,20))
+        ax3.tick_params(which='both', direction='in', labelsize=10, bottom=True, top=True, left=True, right=True)
+        #cax1 = fig.add_axes([0.92, 0.18, 0.02, 0.6])
+        #sm1 = plt.cm.ScalarMappable(cmap=cmap)
+        #sm1.set_array([])
+        #sm1.set_clim(vmin=density_min, vmax=density_max)
+        #cb = fig.colorbar(sm1, cax1, orientation='vertical', format='%.3f')
+        #cb.ax.tick_params(labelsize=10)
+        #cb.set_ticks(np.linspace(density_min, density_max, 5))
+        #font2 = {'family': 'serif',
+        #         'weight': 'normal',
+        #         'size': 10.}
+        #cb.set_label('density', fontdict=font2)
+
+        # set axis
+        #ax2.set_xlabel('Longitude', font1)
+        #ax2.set_ylabel('Latitude', font1)
         labels = ax2.get_xticklabels() + ax2.get_yticklabels()
+        [label.set_fontname('serif') for label in labels]
+        labels = ax3.get_xticklabels() + ax3.get_yticklabels()
         [label.set_fontname('serif') for label in labels]
 
         fig.savefig(fig_name, dpi=300, bbox_inches='tight')
