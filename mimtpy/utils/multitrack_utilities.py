@@ -90,7 +90,7 @@ def find_PS_HDFEOS_fullname(datadir):
     """find full name for S1**_*PS.he5"""
     datafiles = []
     for file in os.listdir(datadir):
-        if os.path.splitext(file)[1] == '.he5' and os.path.basename(file).split('_')[-1].find('PS') != -1:
+        if os.path.splitext(file)[1] == '.he5' and os.path.basename(file).split('_')[-1].find('PS') != -1 and os.path.basename(file).split('_')[-1].find('DS') == -1:
             datafiles.append(file)
 
     return datafiles[0]
