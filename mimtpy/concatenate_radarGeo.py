@@ -21,27 +21,26 @@ from mintpy.utils import readfile, ptime, writefile, utils as ut
 from mintpy.objects import timeseries
 
 import mimtpy.workflow
+
+BOOL_ZERO = np.bool_(0)
+INT_ZERO = np.int16(0)
+FLOAT_ZERO = np.float32(0.0)
+CPX_ZERO = np.complex64(0.0)
+COMPRESSION = 'lzf'
+
 ######################################################################################
 NOTE = """
 Please Note:
-1. Four types of data are supported: velocity, timeseries, maskPS and maskTempCoh
-2. This script concatenates two datasets together. The input files are object datasets, their corresponding geometryRadar.h5 files, and the whole region geometryRadar.h5 file processed with 1:1 looks
-3. If a batch concatenation needed, please use the concatnate_patches.py script.
-4. For timeseries, datasets should have same reference date
-
+1. This script concatenates two datasets together. The input files are two S1 files and the whole region geometryRadar.h5 file processed with 1:1 looks
+2. If a batch concatenation needed, please use the concatnate_patches.py script.
+3. Datasets should have same reference date
 """
 
 EXAMPLE = """example:
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5 --geo-write --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/network_delaunay_4/S1**Del4PS.he5 miaplpy_NNE/netowrk_delaunay_4/S1**Del4PS.he5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir ./miaplpyBig/
 
-    concatenate_radarGeo.py miaplpy_NE/velocity_msk.h5  miaplpy_NNE/velocity_msk.h5 --geo-full ./inputs/geometryRadar.h5 --outdir miaplpyBig
-    
-    concatenate_radarGeo.py miaplpy_NE/timeseries_msk.h5 miaplpy_NNE/timeseries_msk.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/inputs/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir ./miaplpyBig/
-
-    concatenate_radarGeo.py miaplpy_NE/maskPS.h5  miaplpy_NNE/maskPS.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir miaplpyBig
-
-    concatenate_radarGeo.py miaplpy_NE/maskTempCoh.h5  miaplpy_NNE/maskTempCoh.h5 --geo-file1 miaplpy_NE/inputs/geometryRadar.h5 --geo-file2 miaplpy_NNE/intpus/geometryRadar.h5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir miaplpyBig
+    concatenate_radarGeo.py miaplpy_NE/network_delaunay_4/S1**Del4PS.he5 miaplpy_NNE/netowrk_delaunay_4/S1**Del4PS.he5 --geo-full ./inputs/geometryRadar.h5  --out-suffix NE_NNE --outdir ./miaplpyBig/ --list
 """
 
 def create_parser():
@@ -51,18 +50,9 @@ def create_parser():
 
     parser.add_argument('patch_files', nargs='+', type=str, help='two displacement datasets to be concatenated \n')
 
-    parser.add_argument('--geo-file1', nargs=1, type=str, default=['default'], 
-                        help='geometryRadar file of dataset1.' + 
-                        'The default means using geometryRadar.h5 existing in the corresponding patch_files inputs folder\n')
-    
-    parser.add_argument('--geo-file2', nargs=1, type=str, default=['default'], 
-                        help='geometryRadar file of dataset2.' + 
-                        'The default means using geometryRadar.h5 existing in the corresponding patch_files inputs folder\n')
     
     parser.add_argument('--geo-full', nargs=1, type=str, help='Whole region geometryRadar.h5 file processed with 1:1 looks. \n')
     
-    parser.add_argument('--geo-write',action='store_true', default=False, help='whether write the concatenated geometryRadar.h5 results. \n')
- 
     parser.add_argument('--out-suffix', nargs=1,  default=[''], help='suffix of output name of concatenated data. \n')
 
     parser.add_argument('--outdir',dest='outdir',nargs=1, default=[],
@@ -360,7 +350,7 @@ def concatenate_2D(val_ref, val_aff, rc_ref, rc_aff, ref_flag, data_type):
 
     return val_join
 
-def concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag):
+def concatenate_val(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag):
     ref_No, aff_No, rc_ref, rc_aff,lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten = appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
     data_ref = inps.patch_files[ref_No]
     data_aff = inps.patch_files[aff_No]
@@ -373,15 +363,8 @@ def concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten
     vel_aff, vel_aff_atr = readfile.read(data_aff, datasetName='velocity')
     vel_aff_flatten = vel_aff.flatten()
 
-    # using the KNN method to calculate the offset
-    #vel_aff_flatten_adjust = concatenate_process(vel_ref_flatten, vel_aff_flatten, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten)
-    #if aff_No == 0:
-    #    vel_aff_adjust = unflatten_trans1(vel_aff_flatten_adjust)
-    #else:
-    #    vel_aff_adjust = unflatten_trans2(vel_aff_flatten_adjust)
-
     # generate 2D concatenation results
-    data_type = 'vel'
+    data_type = 'val'
     #vel_joined = concatenate_2D(vel_ref, vel_aff_adjust, rc_ref, rc_aff, ref_flag, data_type) # line for KNN method
     vel_joined = concatenate_2D(vel_ref, vel_aff, rc_ref, rc_aff, ref_flag, data_type)
 
@@ -398,21 +381,24 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten,
     data_aff = inps.patch_files[aff_No]
 
     print('Read the reference dataset') 
-    ts_ref, ts_ref_atr = readfile.read(data_ref, datasetName='timeseries')
+    ts_ref, ts_ref_atr = readfile.read(data_ref, datasetName='/HDFEOS/GRIDS/timeseries/observation/displacement')
     print('Read the affiliate dataset') 
-    ts_aff, ts_aff_atr = readfile.read(data_aff, datasetName='timeseries')
+    ts_aff, ts_aff_atr = readfile.read(data_aff, datasetName='/HDFEOS/GRIDS/timeseries/observation/displacement')
 
     # check whether two timeseries have same ref_date
     if ts_ref_atr['REF_DATE'] != ts_aff_atr['REF_DATE']:
         raise ValueError('Two timeseries datasets should have same REF_DATE. PLease change!')
 
     bperp_date_ref = h5py.File(data_ref,'r')
-    bperp_ref = bperp_date_ref['/bperp']
-    dateList_ref = timeseries(data_ref).get_date_list()
+    bperp_ref = bperp_date_ref['/HDFEOS/GRIDS/timeseries/observation/bperp'][:]
+    #dateList_ref = bperp_date_ref['/HDFEOS/GRIDS/timeseries/observation/date'][:]
+    dateList_ref = [i.decode('utf8') for i in bperp_date_ref['/HDFEOS/GRIDS/timeseries/observation/date'][:]]
+
 
     bperp_date_aff = h5py.File(data_aff,'r')
-    bperp_aff = bperp_date_aff['/bperp']
-    dateList_aff = timeseries(data_aff).get_date_list()
+    bperp_aff = bperp_date_aff['/HDFEOS/GRIDS/timeseries/observation/bperp'][:]
+    #dateList_aff = bperp_date_ref['/HDFEOS/GRIDS/timeseries/observation/date'][:]
+    dateList_aff = [i.decode('utf8') for i in bperp_date_aff['/HDFEOS/GRIDS/timeseries/observation/date'][:]]
 
     # judging whether dominant and affiliate data have same dimension
     dim_ref = ts_ref.shape[0]
@@ -422,7 +408,7 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten,
 
     #calculate the intersected date betwee two datasets    
     date_final, Date1, Date2, bperp = mimtpy.concatenate_offset.date_match(dateList_ref, dateList_aff, dim_ref, dim_aff, bperp_ref, bperp_aff)
-    
+
     # prepare to concatenate
     join_dim = len(Date1)
     row_join_start, row_join_end, col_join_start, col_join_end = design_joined_matrix(rc_ref, rc_aff)
@@ -440,13 +426,6 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten,
         dis_aff = readfile.read(data_aff, datasetName=date2)[0]
         dis_aff_flatten = dis_aff.flatten()
 
-        # using the KNN method to calculate the offset
-        #dis_aff_flatten_adjust = concatenate_process(dis_ref_flatten, dis_aff_flatten, lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten)
-        #if aff_No == 0:
-        #    dis_aff_adjust = unflatten_trans1(dis_aff_flatten_adjust)
-        #else:
-        #    dis_aff_adjust = unflatten_trans2(dis_aff_flatten_adjust)
-
         # generate 2D concatenation results
         data_type = 'ts'
         #ts_join[i, :, :] = concatenate_2D(dis_ref, dis_aff_adjust, rc_ref, rc_aff, ref_flag, data_type)
@@ -455,7 +434,7 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten,
 
     ts_join_dataset['bperp'] = np.array(bperp, dtype=float)
     ts_join_dataset['date'] = np.array(date_final, dtype=np.string_)
-    ts_join_dataset['timeseries'] = ts_join
+    ts_join_dataset['displacement'] = ts_join
 
     # adjust the attribute table
     ts_atr = ts_ref_atr
@@ -464,24 +443,31 @@ def concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten,
 
     return ts_join_dataset, ts_atr, date_final
         
-def concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag):
+def concatenate_quality(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag, quality_type):
     """concantenate maskPS data"""
     ref_No, aff_No, rc_ref, rc_aff,lat_ref_flatten, lon_ref_flatten, lat_aff_flatten, lon_aff_flatten = appoint_ref(rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
     data_ref = inps.patch_files[ref_No]
     data_aff = inps.patch_files[aff_No]
 
     print('Read the reference dataset') 
-    msk_ref, msk_ref_atr = readfile.read(data_ref) 
+    msk_ref, msk_ref_atr = readfile.read(data_ref, datasetName='/HDFEOS/GRIDS/timeseries/quality/' + quality_type) 
     print('Read the affiliate dataset') 
-    msk_aff, msk_aff_atr = readfile.read(data_aff)
+    msk_aff, msk_aff_atr = readfile.read(data_aff, datasetName='/HDFEOS/GRIDS/timeseries/quality/' + quality_type)
 
     #get the type of mask
-    if msk_ref_atr['DATA_TYPE'] == 'bool': # the mask is maskTempCoh.h5
+    if quality_type == 'mask': # bool type
         msk_ref = msk_ref + 0
         msk_aff = msk_aff + 0 
  
-    data_type = 'msk'
+    if quality_type == 'mask':
+        data_type = 'msk'
+    else:
+        data_type = 'val'
     msk_joined = concatenate_2D(msk_ref, msk_aff, rc_ref, rc_aff, ref_flag, data_type)
+
+    if quality_type == 'mask':
+        msk_joined = np.ceil(msk_joined)
+        msk_joined = msk_joined.astype(bool)
 
     # adjust the attribute table
     msk_atr = msk_ref_atr
@@ -492,14 +478,9 @@ def concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, l
 
 def concatenate_geo(inps):
     """concatenate geometry data"""
-    data_geo1 = inps.geo_file1[0]
-    data_geo2 = inps.geo_file2[0]
+    data_geo1 = inps.patch_files[0]
+    data_geo2 = inps.patch_files[1]
 
-    if data_geo1 == 'default':
-        data_geo1 = os.path.dirname(inps.patch_files[0]) + '/inputs/' + 'geometryRadar.h5'
-    if data_geo2 == 'default':
-        data_geo2 = os.path.dirname(inps.patch_files[1]) + '/inputs/' + 'geometryRadar.h5'
-        
     geo_full = inps.geo_full[0]
 
     print('Read the geometry data for the whole region') 
@@ -508,20 +489,26 @@ def concatenate_geo(inps):
     inc_full = readfile.read(geo_full, datasetName='incidenceAngle')[0]
     azi_full = readfile.read(geo_full, datasetName='azimuthAngle')[0]
     hgt_full = readfile.read(geo_full, datasetName='height')[0]
+    sdm_full = readfile.read(geo_full, datasetName='shadowMask')[0]
+    srd_full = readfile.read(geo_full, datasetName='slantRangeDistance')[0]
     
     print('Read the geometry data of the first given dataset') 
-    lat1, lat_atr1 = readfile.read(data_geo1, datasetName='latitude')
-    lon1, lon_atr1 = readfile.read(data_geo1, datasetName='longitude')
-    inc1, inc_atr1 = readfile.read(data_geo1, datasetName='incidenceAngle')
-    azi1, azi_atr1 = readfile.read(data_geo1, datasetName='azimuthAngle')
-    hgt1, hgt_atr1 = readfile.read(data_geo1, datasetName='height')
+    lat1, lat_atr1 = readfile.read(data_geo1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/latitude')
+    lon1, lon_atr1 = readfile.read(data_geo1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/longitude')
+    inc1, inc_atr1 = readfile.read(data_geo1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/incidenceAngle')
+    azi1, azi_atr1 = readfile.read(data_geo1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/azimuthAngle')
+    hgt1, hgt_atr1 = readfile.read(data_geo1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/height')
+    sdm1, sdm_atr1 = readfile.read(data_geo1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/shadowMask')
+    srd1, srd_atr1 = readfile.read(data_geo1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/slantRangeDistance')
 
     print('Read the geometry data of the second given dataset') 
-    lat2, lat_atr2 = readfile.read(data_geo2, datasetName='latitude')
-    lon2, lon_atr2 = readfile.read(data_geo2, datasetName='longitude')
-    inc2, inc_atr2 = readfile.read(data_geo2, datasetName='incidenceAngle')
-    azi2, azi_atr2 = readfile.read(data_geo2, datasetName='azimuthAngle')
-    hgt2, hgt_atr2 = readfile.read(data_geo2, datasetName='height')
+    lat2, lat_atr2 = readfile.read(data_geo2, datasetName='/HDFEOS/GRIDS/timeseries/geometry/latitude')
+    lon2, lon_atr2 = readfile.read(data_geo2, datasetName='/HDFEOS/GRIDS/timeseries/geometry/longitude')
+    inc2, inc_atr2 = readfile.read(data_geo2, datasetName='/HDFEOS/GRIDS/timeseries/geometry/incidenceAngle')
+    azi2, azi_atr2 = readfile.read(data_geo2, datasetName='/HDFEOS/GRIDS/timeseries/geometry/azimuthAngle')
+    hgt2, hgt_atr2 = readfile.read(data_geo2, datasetName='/HDFEOS/GRIDS/timeseries/geometry/height')
+    sdm2, sdm_atr2 = readfile.read(data_geo2, datasetName='/HDFEOS/GRIDS/timeseries/geometry/shadowMask')
+    srd2, srd_atr2 = readfile.read(data_geo2, datasetName='/HDFEOS/GRIDS/timeseries/geometry/slantRangeDistance')
     
     lat1_flatten = lat1.flatten() # flatten matrix according rows
     lon1_flatten = lon1.flatten()
@@ -545,121 +532,173 @@ def concatenate_geo(inps):
     inc_joined = inc_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
     azi_joined = azi_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
     hgt_joined = hgt_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
+    sdm_joined = sdm_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
+    srd_joined = srd_full[row_join_start: row_join_end + 1, col_join_start: col_join_end + 1]
     
-    return lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2
+    return lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, sdm_joined, srd_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2
 
-def write_vel(vel_joined, vel_atr, datatype, inps):
+def create_hdf5_dataset(group, dsName, data, max_digit=55, compression=COMPRESSION):
+    """Create HDF5 dataset and print out message."""
+    msg = 'create dataset {d:<{w}}'.format(d='{}/{}'.format(group.name, dsName), w=max_digit)
+    msg += ' of {t:<10} in size of {s}'.format(t=str(data.dtype), s=data.shape)
+    msg += ' with compression={c}'.format(c=compression)
+    print(msg)
+
+    if data.ndim == 1:
+        dset = group.create_dataset(dsName,
+                                    data=data,
+                                    compression=compression)
+    elif data.ndim == 2:
+        dset = group.create_dataset(dsName,
+                                    data=data,
+                                    chunks=True,
+                                    compression=compression)
+    return dset
+
+def write_hdf5_file(metadata, out_file, ts_file, tcoh_file, scoh_file, mask_file, geom_file):
+    """Write HDF5 file in HDF-EOS5 format."""
+    ts_obj = ts_file['displacement']
+    dateList = ts_file['date']
+    numDate = ts_obj.shape[0]
+
+    # Open HDF5 File
+    f = h5py.File(out_file, 'w')
+    print('create HDF5 file: {} with w mode'.format(out_file))
+    max_digit = 55
+
+    ##### Group - Observation
+    gName = 'HDFEOS/GRIDS/timeseries/observation'
+    print('create group   /{}'.format(gName))
+    group = f.create_group(gName)
+
+    ## O1 - displacement
+    dsName = 'displacement'
+    dsShape = (numDate, ts_obj.shape[1], ts_obj.shape[2])
+    dsDataType = np.float32
+    print(('create dataset /{d:<{w}} of {t:<10} in size of {s}'
+           ' with compression={c}').format(d='{}/{}'.format(gName, dsName),
+                                           w=max_digit,
+                                           t='float32',
+                                           s=dsShape,
+                                           c=COMPRESSION))
+    dset = group.create_dataset(dsName,
+                                shape=dsShape,
+                                maxshape=(None, dsShape[1], dsShape[2]),
+                                dtype=dsDataType,
+                                chunks=True,
+                                compression=COMPRESSION)
+
+    print('write data acquition by acquition ...')
+    prog_bar = ptime.progressBar(maxValue=numDate)
+    for i in range(numDate):
+        #dset[i, :, :] = readfile.read(ts_file, datasetName=dateList[i])[0]
+        dset[i, :, :] = ts_obj[i, :, :]
+        prog_bar.update(i+1, suffix='{}/{} {}'.format(i+1, numDate, dateList[i]))
+    prog_bar.close()
+
+    # attributes
+    dset.attrs['Title'] = dsName
+    dset.attrs['MissingValue'] = FLOAT_ZERO
+    dset.attrs['_FillValue'] = FLOAT_ZERO
+    dset.attrs['Units'] = 'meters'
+
+    ## O2 - date
+    dsName = 'date'
+    dset = create_hdf5_dataset(group, dsName, dateList)
+
+    ## O3 - perp baseline
+    dsName = 'bperp'
+    #data = np.array(ts_obj.pbase, dtype=np.float32)
+    dset = create_hdf5_dataset(group, dsName, ts_file['bperp'])
+
+    ## O4 - velocity
+    #dsName = 'velocity'
+    #data = readfile.read(vel_file)[0]
+    #dset = create_hdf5_dataset(group, dsName, data)
+    # attributes
+    #dset.attrs['Title'] = dsName
+    #dset.attrs['MissingValue'] = FLOAT_ZERO
+    #dset.attrs['_FillValue'] = FLOAT_ZERO
+    #dset.attrs['Units'] = 'm/yr'
+
+    ##### Group - Quality
+    gName = 'HDFEOS/GRIDS/timeseries/quality'
+    print('create group   /{}'.format(gName))
+    group = f.create_group(gName)
+
+    ## Q1 - temporalCoherence
+    dsName = 'temporalCoherence'
+    # read
+    data = tcoh_file
+    # write
+    dset = create_hdf5_dataset(group, dsName, data)
+    # attributes
+    dset.attrs['Title'] = dsName
+    dset.attrs['MissingValue'] = FLOAT_ZERO
+    dset.attrs['_FillValue'] = FLOAT_ZERO
+    dset.attrs['Units'] = '1'
+
+    ## Q2 - avgSpatialCoherence
+    dsName = 'avgSpatialCoherence'
+    # read
+    data = scoh_file
+    # write
+    dset = create_hdf5_dataset(group, dsName, data)
+    # attributes
+    dset.attrs['Title'] = dsName
+    dset.attrs['MissingValue'] = FLOAT_ZERO
+    dset.attrs['_FillValue'] = FLOAT_ZERO
+    dset.attrs['Units'] = '1'
+
+    ## Q3 - mask
+    dsName = 'mask'
+    # read
+    data = mask_file
+    # write
+    dset = create_hdf5_dataset(group, dsName, data)
+    # attributes
+    dset.attrs['Title'] = dsName
+    dset.attrs['MissingValue'] = BOOL_ZERO
+    dset.attrs['_FillValue'] = BOOL_ZERO
+    dset.attrs['Units'] = '1'
     
-    row, colm = vel_joined.shape
-    atr_vel = dict()
-    atr_vel['WIDTH'] = str(colm)
-    atr_vel['LENGTH'] = str(row)
-    atr_vel['FILE_TYPE'] = 'velocity'
 
-    #vel_atr['FILE_TYPE'] = 'velocity'
-    
-    vel_data = dict()
-    vel_data['velocity'] = vel_joined
+    ##### Group - Write Geometry
+    # Required: height, incidenceAngle
+    # Optional: rangeCoord, azimuthCoord, azimuthAngle, slantRangeDistance, waterMask, shadowMask
+    gName = 'HDFEOS/GRIDS/timeseries/geometry'
+    print('create group   /{}'.format(gName))
+    group = f.create_group(gName)
+    datasetNames = ['azimuthAngle', 'height', 'incidenceAngle', 'latitude', 'longitude', 'shadowMask', 'slantRangeDistance']
+    for dsName in datasetNames:
+        # read
+        data = geom_file[dsName]
+        # write
+        dset = create_hdf5_dataset(group, dsName, data)
 
-    output_dir = inps.outdir[0]
-    outname = inps.out_suffix[0]
-    if len(outname) is 0:
-        vel_filename = output_dir + '/' + datatype +  '.h5'
-    else:
-        vel_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
+        # attributes
+        dset.attrs['Title'] = dsName
+        if dsName in ['height', 'slantRangeDistance']:
+            dset.attrs['MissingValue'] = FLOAT_ZERO
+            dset.attrs['_FillValue'] = FLOAT_ZERO
+            dset.attrs['Units'] = 'meters'
 
-    writefile.write(datasetDict=vel_data, out_file=vel_filename, metadata=atr_vel)
+        elif dsName in ['incidenceAngle', 'azimuthAngle', 'latitude', 'longitude']:
+            dset.attrs['MissingValue'] = FLOAT_ZERO
+            dset.attrs['_FillValue'] = FLOAT_ZERO
+            dset.attrs['Units'] = 'degrees'
 
-    return 
+        elif dsName in ['shadowMask']:
+            dset.attrs['MissingValue'] = BOOL_ZERO
+            dset.attrs['_FillValue'] = BOOL_ZERO
+            dset.attrs['Units'] = '1'
 
-def write_ts(ts_joined_dataset, ts_atr, date_final, datatype, inps):
-    row, colm = ts_joined_dataset['timeseries'].shape[1: ]
-
-    atr_ts = ts_atr
-    atr_ts['WIDTH'] = str(colm)
-    atr_ts['LENGTH'] = str(row)
-    atr_ts['FILE_TYPE'] = 'timeseries'
-    #ts_atr['FILE_TYPE'] = 'timeseries'
-    
-    output_dir = inps.outdir[0]
-    outname = inps.out_suffix[0]
-    file_name = os.path.basename(inps.patch_files[0])
-    if len(outname) is 0:
-        #ts_filename = output_dir + '/' + file_name.split('.')[0] +  '.h5'
-        ts_filename = output_dir + '/' + datatype +  '.h5'
-    else:
-        ts_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
-
-    writefile.write(datasetDict=ts_joined_dataset, out_file=ts_filename, metadata=atr_ts)
-    
-    return
-
-def write_mask(msk_joined, msk_atr, datatype, inps):
-    row, colm = msk_joined.shape
-    
-    # write simple attribution
-    atr_msk = dict()
-    atr_msk['WIDTH'] = str(colm)
-    atr_msk['LENGTH'] = str(row)
-    atr_msk['FILE_TYPE'] = 'mask'
-    #msk_atr['FILE_TYPE'] = 'mask'
-    atr_msk['DATA_TYPE'] = msk_atr['DATA_TYPE']
-    if msk_atr['DATA_TYPE'] == 'bool': # the mask is maskTempCoh.h5
-        msk_joined = msk_joined > 0
-
-    msk_data = dict()
-    msk_data['mask'] = msk_joined
-
-    output_dir = inps.outdir[0]
-    outname = inps.out_suffix[0]
-    file_name = os.path.basename(inps.patch_files[0])
-    if len(outname) is 0:
-        msk_filename = output_dir + '/' + datatype +  '.h5'
-    else:
-        #msk_filename = output_dir + '/' + file_name.split('.')[0] + '_' + outname + '.h5'
-        msk_filename = output_dir + '/' + datatype + '_' + outname + '.h5'
-
-    writefile.write(datasetDict=msk_data, out_file=msk_filename, metadata=atr_msk)
-     
-    return 
-
-def write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps):
-
-    row, colm = lat_joined.shape
-
-    # write simple attribution
-    atr_geo = dict()
-    atr_geo['WIDTH'] = str(colm)
-    atr_geo['LENGTH'] = str(row)
-    atr_geo['FILE_TYPE'] = 'geometry'
-
-
-    lat_data = dict()
-    lat_data['latitude'] = lat_joined
-
-    lon_data = dict()
-    lon_data['longitude'] = lon_joined
-
-    geo_data = dict()
-    geo_data['azimuthAngle'] = azi_joined
-    geo_data['incidenceAngle'] = inc_joined
-    geo_data['height'] = hgt_joined
-    geo_data['latitude'] = lat_joined
-    geo_data['longitude'] = lon_joined
-
-    output_dir = inps.outdir[0]
-    outname = inps.out_suffix[0]
-    if len(outname) is 0:
-        geo_outname = 'geometryRadar'
-    else:
-        geo_outname = 'geometryRadar_' + outname
-
-    geo_filename = output_dir + '/' + geo_outname + '.h5'
-
-    # write h5 file
-    writefile.write(datasetDict=geo_data, out_file=geo_filename, metadata=atr_geo)
-
-    print('Finish!')
+    # Write Attributes to the HDF File
+    print('write metadata to root level')
+    for key, value in iter(metadata.items()):
+        f.attrs[key] = value
+    f.close()
+    print('finished writing to {}'.format(out_file))
 
 def find_the_reference(rc1, rc2):
     """Find the reference data based on geo info"""
@@ -721,75 +760,108 @@ def determine_datatype(inps):
 
     return datatype
 
-def list_and_check(inps):
+def list_and_check(dataset1, dataset2, inps):
     def state_judge(dataset):
         if os.path.exists(dataset):
             return 'True'
         else:
             return 'False'
     def check_ordering(geo_data):
-        lat = readfile.read(geo_data, datasetName='latitude')[0]
-        lon = readfile.read(geo_data, datasetName ='longitude')[0]
+        lat = readfile.read(dataset1, datasetName='/HDFEOS/GRIDS/timeseries/geometry/latitude')[0]
+        lon = readfile.read(geo_data, datasetName ='/HDFEOS/GRIDS/timeseries/geometry/longitude')[0]
         if lat[0][0] < lat[-1][0] and lon[0][0] < lon[0][-1]:
             print('{}: Correct lat and lon order'.format(geo_data)) 
         else:
             raise ValueError('Wrong lat/lon order! The lat should increase from north to south. The lon should increase from west to east')
         return
-    print('Check and list the attribute dataset to be concatenated:')
-    dataset1 = inps.patch_files[0]
-    dataset2 = inps.patch_files[1]
+    print('****************Check and list the two datasets to be concatenated:*******************')
+    #dataset1 = inps.patch_files[0]
+    #dataset2 = inps.patch_files[1]
     print('---The first dataset is {} and the state of being is {}'.format(dataset1, state_judge(dataset1)))
     print('---The second dataset is {} and the state of being is {}'.format(dataset2, state_judge(dataset2)))
 
-    print('Check and list the geometry dataset used:')
-    data_geo1 = inps.geo_file1[0]
-    if data_geo1 == 'default':
-        data_geo1 = os.path.dirname(inps.patch_file[0]) + './inputs/' + 'geometryRadar.h5'
-    data_geo2 = inps.geo_file2[0]
-    if data_geo2 == 'default':
-        data_geo2 = os.path.dirname(inps.patch_file[1]) + './inputs/' + 'geometryRadar.h5'
+    print('Check and list the geometry dataset of whole region:')
+    
     geo_full = inps.geo_full[0]
-    print('---The first geometry dataset is {} and the state of being is {}'.format(data_geo1, state_judge(data_geo1)))
-    print('---The second geometry dataset is {} and the state of being is {}'.format(data_geo2, state_judge(data_geo2)))
     print('---The geometry dataset of whole region is {} and the state of being is {}'.format(geo_full, state_judge(geo_full)))
 
-    print('Check the latitude and longitude ordering')
-    check_ordering(data_geo1)   
-    check_ordering(data_geo2)   
+    print('*****************Check the latitude and longitude ordering*****************************')
+    check_ordering(dataset1)   
+    check_ordering(dataset2)   
 
     return
 
 def main(iargs=None):
     inps = cmd_line_parse(iargs)   
 
+    S1file_1 = inps.patch_files[0]
+    S1file_2 = inps.patch_files[1]
+
     if inps.list:
-        list_and_check(inps)
+        list_and_check(S1file_1, S1file_2, inps)
         exit()
 
-    datatype = determine_datatype(inps)
-    print('Data type is: ', datatype)
+    #datatype = determine_datatype(inps)
+    #print('Data type is: ', datatype)
+    datatypes = ['observation', 'quality']
 
     print('Process the geometry info')
-    lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2 = concatenate_geo(inps)
-    if inps.geo_write:
-        write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps)
+    lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, sdm_joined, srd_joined, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2 = concatenate_geo(inps)
+    #if inps.geo_write:
+    #    write_geo(lat_joined, lon_joined, inc_joined, azi_joined, hgt_joined, inps)
+    # write geometry dataset
+    geom_join_dataset = dict()
+    geom_join_dataset['latitude'] = lat_joined
+    geom_join_dataset['longitude'] = lon_joined
+    geom_join_dataset['incidenceAngle'] = inc_joined
+    geom_join_dataset['azimuthAngle'] = azi_joined
+    geom_join_dataset['height'] = hgt_joined
+    geom_join_dataset['shadowMask'] = sdm_joined
+    geom_join_dataset['slantRangeDistance'] = srd_joined
 
     print('Find the relative position between the two datasets')
     ref_flag = find_the_reference(rc1, rc2)
 
-    print('process %s data' % datatype)
-    if datatype == 'velocity':
-        vel_joined, vel_atr = concatenate_vel(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag)
-        write_vel(vel_joined, vel_atr, datatype, inps)
-    elif datatype == 'timeseries':
-        ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag)
-        write_ts(ts_join_dataset, ts_atr, date_final, datatype, inps)
-    elif datatype == 'mask':
-        msk_joined, msk_atr = concatenate_mask(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag)
-        write_mask(msk_joined, msk_atr, datatype, inps)
+    for datatype in datatypes:
+        print('process %s data' % datatype)
+        if datatype == 'observation':
+            print('process the time series data!')
+            ts_join_dataset, ts_atr, date_final = concatenate_ts(inps, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, unflatten_trans1, unflatten_trans2, rc1, rc2, ref_flag)
+            #write_ts(ts_join_dataset, ts_atr, date_final, datatype, inps)
+        elif datatype == 'quality':
+            print('process the avgSpatialCoherence data!')
+            Scoh_joined, msk_atr = concatenate_quality(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag, 'avgSpatialCoherence')
+            print('process the temporalCoherence data!')
+            Tcoh_joined, msk_atr = concatenate_quality(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag, 'temporalCoherence')
+            print('process the mask data!')
+            msk_joined, msk_atr = concatenate_quality(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten, lon2_flatten, ref_flag, 'mask')
+            #write_mask(msk_joined, msk_atr, datatype, inps)
     #elif datatype == 'mask':
     #    msk_joined, msk_atr = concatenate_mask(inps, row_ref, col_ref, row_aff, col_aff, row_a_r, col_a_r, ref_flag)
     #    write_mask(msk_joined, inps)
+    # write the S1 file
+    # generate the S1 file name
+    #meta, track_number, swath_number, start_frame, last_frame = pre_meta(ts_data, chunks)
+    #bperp_date = h5py.File(ts_data,'r')
+    #data_date = np.array(bperp_date['/date']).tolist()
+    #start_date = data_date[0].decode('utf-8')
+    #end_date = data_date[-1].decode('utf-8')
+    #out_file = pro_dir + '/' + 'S1_' + swath_number + '_' + track_number + '_' + start_frame.zfill(4) + '_' + last_frame.zfill(4) + '_' + start_date + '_' + end_date + '.he5'
+    outname = inps.outdir[0] + 'S1_' + inps.out_suffix[0] + '.he5'
+    # generate the S1 file
+    S1meta = readfile.read_attribute(S1file_1)
+    S1meta['length'] = str(Scoh_joined.shape[0])
+    S1meta['width'] = str(Scoh_joined.shape[1])
+    S1meta['LENGTH'] = str(Scoh_joined.shape[0])
+    S1meta['WIDTH'] = str(Scoh_joined.shape[1])
+    write_hdf5_file(metadata=S1meta,
+                    out_file=outname,
+                    ts_file=ts_join_dataset,
+                    tcoh_file=Tcoh_joined,
+                    scoh_file=Scoh_joined,
+                    mask_file=msk_joined,
+                    geom_file=geom_join_dataset)
+
 ######################################################################################
 if __name__ == '__main__':
     main()
