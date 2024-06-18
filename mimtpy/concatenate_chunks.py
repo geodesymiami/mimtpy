@@ -250,7 +250,7 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps, files):
             dsDict['date'] = date_intersection
             dsDict['timeseries'] = data_ts
             atr['FILE_TYPE'] = 'timeseries'
-            atr['REF_DATE'] = str(date_intersection.astype(np.int)[0]) 
+            atr['REF_DATE'] = str(date_intersection.astype(np.int32)[0]) 
             writefile.write(dsDict, out_file=outfile, metadata=atr)     
                 
     # creat output dir
