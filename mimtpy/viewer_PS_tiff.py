@@ -49,6 +49,8 @@ EXAMPLE = """example:
 
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/SanHe.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.8 40.08 116.75 117.25 --vlim -3 3 --output vel_sanhe.png --outdir ./ --shp_type polygon  --save_gdf
 
+    viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/SanHe.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.8 40.08 116.75 117.25 --vlim -3 3 --output vel_sanhe.png --outdir ./ --shp_type polygon  --overlay --save_gdf
+
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output vel_ttest.png --outdir ./ --shp_type line --buffer 100
 
     viewer_PS_tiff.py velocity_ref_msk_ramp.h5 --shp_file ../shp/Beijing_Transfer/railway_subway_OSM.shp --geo_file ./inputs/geometryRadar.h5 --subset 39.95 40.02 116.50 116.56 --vlim -3 3 --output PS_density.png --outdir ./ --shp_type line --buffer 100 --density --interval 1000
@@ -105,6 +107,8 @@ def create_parser():
     parser.add_argument('--markersize', nargs='?', type=float, help='Marker size of PS points\n')
     
     parser.add_argument('--density',action='store_true', default=False, help='whether calculate the PS density for line. \n')
+    
+    parser.add_argument('--overlay',action='store_true', default=False, help='Overlaying polygon with PS points. DONNOT do mask\n')
     
     parser.add_argument('--interval', nargs='*', type=float, help='distance for each line segment. Unit is meter\n')
     
@@ -301,9 +305,14 @@ def shapefile_process(inps, shp_file_clip, gdf_obj, gdf_obj_s=None):
     if shp_type == 'polygon':
         shpfile_output = shp_file_clip.boundary
         # mask the PS points according to the buffer
-        gdf_obj_msk = geopandas.clip(gdf_obj, shp_file_clip)
-        if gdf_obj_s is not None:
-            gdf_obj_s_msk = geopandas.clip(gdf_obj_s, shp_file_clip)
+        if inps.overlay:
+            gdf_obj_msk = gdf_obj
+            if gdf_obj_s is not None:
+                gdf_obj_s_msk = gdf_obj_s
+        else:
+            gdf_obj_msk = geopandas.clip(gdf_obj, shp_file_clip)
+            if gdf_obj_s is not None:
+                gdf_obj_s_msk = geopandas.clip(gdf_obj_s, shp_file_clip)
 
     elif shp_type == 'line':
         shpfile_output = copy.deepcopy(shp_file_clip)
