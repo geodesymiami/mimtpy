@@ -21,6 +21,7 @@ from matplotlib.backend_bases import MouseButton
 from matplotlib import widgets
 import scipy
 from shapely.geometry import LineString, Polygon, MultiLineString, MultiPoint
+import math
 
 from mintpy.utils import readfile, ptime, writefile, utils as ut
 from mintpy.objects import timeseries
@@ -39,6 +40,8 @@ EXAMPLE = """example:
     viewer_PS_tiff.py velocity.h5 --ts_file timeseries.h5 --geo_file ./inputs/geometryRadar.h5 --point 39.6 118.2 --outdir ./ 
     
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --output subset.png --outdir ./ 
+
+    viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --refpoi 39.65 118.25 --output subset.png --outdir ./ 
 
     viewer_PS_tiff.py velocity.h5 --tiff_file tangshan_NE_patch.tiff --geo_file ./inputs/geometryRadar.h5 --subset 39.6 39.7 118.2 118.3 --vlim -0.4 0.4 --ts_file ./TangshanSenAT69/miaplpy_NE_201410_202212/network_single_reference/timeseries.h5 --interactive 
 
@@ -78,6 +81,8 @@ def create_parser():
     parser.add_argument('--subset', nargs='*', type=float, help='lat1 lat2 lon1 lon2 of the subset region.\n')
     
     parser.add_argument('--vlim', nargs='*', type=float, help='velocity range to display.\n')
+   
+    parser.add_argument('--refpoi', nargs='*', type=float, help='lat and lon of reference point.\n')
    
     parser.add_argument('--output', nargs='?', type=str, help='output name of differential wrap phase timeseries txt file.\n')
 
@@ -632,15 +637,55 @@ class interactive_map:
                  'size': 10.}
         cb.set_label('velocity [cm/year]', fontdict=font2)
 
-def read_miaplpy_data(input_file, geo_file, ts_file=None):
+def change_refpoi(lat_data, lon_data, nanMask, inps):
+    def haversin(theta):
+        v = np.sin(theta / 2)
+        return v * v
+
+    def distance2points(lat1, lon1, lat2, lon2):
+        radius = 6370
+    
+        lat1 = np.radians(lat1)
+        lon1 = np.radians(lon1)
+        lat2 = np.radians(lat2)
+        lon2 = np.radians(lon2)
+        
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+    
+        h = haversin(dlat) + np.cos(lat1) * np.cos(lat2) * haversin(dlon)
+    
+        dis = 2 * radius * np.sin(np.sqrt(h))
+        return dis
+
+    ref_lat = inps.refpoi[0]
+    ref_lon = inps.refpoi[1]
+
+    # calculate the distance between points
+    dis_matrix = distance2points(ref_lat, ref_lon, lat_data, lon_data)
+    dis_matrix += nanMask
+    row, col = divmod(np.nanargmin(dis_matrix), np.shape(dis_matrix)[1])
+
+    return row, col
+
+def read_miaplpy_data(input_file, geo_file, inps, ts_file=None):
     vel_data = readfile.read(input_file)[0]
+    nanMask = np.zeros((vel_data.shape[0], vel_data.shape[1]))
+    nanMask[np.isnan(vel_data)] = np.nan
     lat_data = readfile.read(geo_file, datasetName='latitude')[0]
     lon_data = readfile.read(geo_file, datasetName='longitude')[0]
 
     if ts_file is not None:
         ts_data = readfile.read(ts_file, datasetName='timeseries')[0]
+        if inps.refpoi:
+            row, col = change_refpoi(lat_data, lon_data, nanMask, inps)
+            vel_data -= vel_data[row, col]
+            ts_data -= ts_data[:, row, col]
         return vel_data, lat_data, lon_data, ts_data
     else:
+        if inps.refpoi:
+            row, col = change_refpoi(lat_data, lon_data, nanMask, inps)
+            vel_data -= vel_data[row, col]
         return vel_data, lat_data, lon_data
 
 def read_stamps_data(input_file, geo_file, ts_file=None):
@@ -667,9 +712,9 @@ def main():
         file_extension = os.path.splitext(inps.input_file[0])[1] 
         if file_extension == '.h5':
             if inps.ts_file is not None:
-                vel_data, lat_data, lon_data, ts_data = read_miaplpy_data(inps.input_file[0], inps.geo_file[0], inps.ts_file)
+                vel_data, lat_data, lon_data, ts_data = read_miaplpy_data(inps.input_file[0], inps.geo_file[0], inps, inps.ts_file)
             else:
-                vel_data, lat_data, lon_data = read_miaplpy_data(inps.input_file[0], inps.geo_file[0])
+                vel_data, lat_data, lon_data = read_miaplpy_data(inps.input_file[0], inps.geo_file[0], inps)
             vel_mask = copy.deepcopy(vel_data)
             vel_mask[np.isnan(vel_mask)] = 1
         else:
