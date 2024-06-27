@@ -35,7 +35,7 @@ def create_parser():
 
     parser.add_argument('input_HDFEOS', nargs=1, help='directory stored *.he5 files. \n')
     
-    parser.add_argument('attribute', nargs=1, help='chosen attribute. \n')
+    parser.add_argument('attribute', nargs=1, help='the type of dataset. Could be mask, temporalCoherence, dusplacement, velocity, geometry \n')
     
     parser.add_argument('--date', dest='date',nargs=1, help='date1 or date1_2 for displacement. \n')
     
@@ -64,7 +64,7 @@ def located_dataset_based_attribut(inps):
     quality_attr = ['mask','temporalCoherence','avgSpatialCoherence']
     
     #define the dataset
-    if attr in geometry_attr:
+    if attr in geometry_attr or attr == 'geometry':
         dataset='/HDFEOS/GRIDS/timeseries/geometry/'
     if attr in quality_attr:
         dataset = '/HDFEOS/GRIDS/timeseries/quality/'
@@ -181,6 +181,14 @@ def extract_data(inps,dataset,outdir):
             writefile.write(data, out_file=output_vel, metadata=vel_atr)    
             
             os.chdir('../')
+    elif attr == 'geometry':
+        outfile = outdir + '/geometryRadar.h5' 
+        geom_data = dict()
+        for item in ['azimuthAngle','height','incidenceAngle','latitude','longitude','shadowMask','slantRangeDistance']:
+            geom_data[item] = readfile.read("".join(inps.input_HDFEOS), datasetName=dataset+item)[0]
+        atr['FILE_TYPE'] = attr
+        writefile.write(geom_data, out_file=outfile, metadata=atr)
+
     else:
         data = readfile.read("".join(inps.input_HDFEOS),datasetName=dataset+attr)[0]
         outfile = outdir + '/' + attr + '.h5'
@@ -197,7 +205,7 @@ def extract_data(inps,dataset,outdir):
     #    maskfile = readfile.read("".join(inps.input_HDFEOS),datasetName='/HDFEOS/GRIDS/timeseries/quality/mask')[0]
     #    data[maskfile == 0] = np.nan
         
-    return data, data_name, atr
+    #return data, data_name, atr
 
 def geocode(data,data_name,atr,outdir):
     """geocode step"""
@@ -267,7 +275,7 @@ def main(iagrs=None):
     dataset = located_dataset_based_attribut(inps)
    
     outdir = inps.outdir[0] 
-    data,data_name,atr = extract_data(inps,dataset,outdir)
+    extract_data(inps,dataset,outdir)
     # bbox
     #if inps.SNWE == None:
     #    print('\n generate geotiff')
