@@ -170,13 +170,13 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps, files):
             srd = readfile.read(HDFEOS_file, datasetName='/HDFEOS/GRIDS/timeseries/geometry/slantRangeDistance')[0]
 
             # mask the data
-            azi[maskfile == 0] = np.nan
-            inc[maskfile == 0] = np.nan
-            hgt[maskfile == 0] = np.nan
-            lat[maskfile == 0] = np.nan
-            lon[maskfile == 0] = np.nan
-            sdM[maskfile == 0] = np.nan
-            srd[maskfile == 0] = np.nan
+            #azi[maskfile == 0] = np.nan
+            #inc[maskfile == 0] = np.nan
+            #hgt[maskfile == 0] = np.nan
+            #lat[maskfile == 0] = np.nan
+            #lon[maskfile == 0] = np.nan
+            #sdM[maskfile == 0] = np.nan
+            #srd[maskfile == 0] = np.nan
             
             # write to HDF5 file
             dsDict = dict()
@@ -243,7 +243,7 @@ def concatenation_chunks(chunks, project, datatype, pro_outdir, inps, files):
             date_intersection = np.array(date_intersection, dtype=np.string_)
 
             # mask data
-            data_ts[:, maskfile == 0] = np.nan
+            #data_ts[:, maskfile == 0] = np.nan
             # write to HDF5 file
             dsDict = dict()
             dsDict['bperp'] = data_bp
