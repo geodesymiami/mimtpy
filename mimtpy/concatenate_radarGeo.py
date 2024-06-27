@@ -465,9 +465,10 @@ def concatenate_quality(inps, rc1, rc2, lat1_flatten, lon1_flatten, lat2_flatten
         data_type = 'val'
     msk_joined = concatenate_2D(msk_ref, msk_aff, rc_ref, rc_aff, ref_flag, data_type)
 
-    if quality_type == 'mask':
-        msk_joined = np.ceil(msk_joined)
-        msk_joined = msk_joined.astype(bool)
+    #if quality_type == 'mask':
+    #    msk_joined = np.ceil(msk_joined)
+    #    msk_joined = msk_joined.astype(bool)
+    msk_joined = msk_joined.astype(np.int32)
 
     # adjust the attribute table
     msk_atr = msk_ref_atr
