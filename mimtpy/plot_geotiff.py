@@ -18,8 +18,8 @@ import numpy as np
 
 from mintpy.objects import timeseries
 from datetime import datetime as dt
-import mintpy.objects.gps as gps
-from mintpy.objects.gps import GPS
+import mintpy.objects.gnss as gnss
+from mintpy.objects.gnss import GNSS_UNR
 from mintpy.utils import utils as ut
 
 import mimtpy.objects.cgps as cgps
@@ -321,7 +321,7 @@ def plot_geotiff(inps, site_infovel=None):
    
     else:
         cax = make_axes_locatable(ax1).append_axes("right", "3%", pad="3%")
-        norm = mpl.colors.Normalize(vmin=raster_min*100, vmax=raster_max*100)
+        norm = mpl.colors.Normalize(vmin=raster_min, vmax=raster_max)
         cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
         cbar.ax.tick_params(labelsize=18)
 
